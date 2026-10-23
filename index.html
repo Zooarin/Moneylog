@@ -545,9 +545,10 @@
     // ================= CONFIGURATION & GLOBAL STATE =================
     let GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRuvEUQgdDmlQBOvleIdzeGgqdpvV43OXuXeSNVwORH4IC246QkpskQhtwgp_BkKGXp3_-LlqfQbm5m/pub?gid=0&single=true&output=csv';
 
-    // 달력 표시 연/월 (실제 거래 일자 Date 기준)
-    let currentYear = 2026;
-    let currentMonth = 10; // 1-12
+    // 달력 표시 연/월 (실제 거래 일자 Date 기준 - 시트 로드시 최신 데이터로 자동 갱신됨)
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1; // 1-12
+    let isFirstLoad = true; // 최초 접속 시 최신 연월 자동 지정을 위한 플래그
 
     let selectedDateFilter = null; // 'YYYY-MM-DD' or null
     let activeCategory = 'ALL';
@@ -559,7 +560,7 @@
     let allTransactions = [];
     let transactions = []; // 정산월 필터가 적용된 거래 내역
     let availableSettlementMonths = []; // 예: ['2026-10', '2026-09', ...]
-    let selectedSettlementMonth = 'ALL'; // 기본값은 전체 정산월(ALL)
+    let selectedSettlementMonth = null; // 초기 로드시 최신 정산월로 자동 설정
 
     // 카테고리별 테마 및 아이콘 매핑
     const categoryPalette = [
@@ -752,6 +753,13 @@
       const parsedData = processSheetCSV(csvText);
       if (parsedData.length > 0) {
         allTransactions = parsedData;
+
+        // 🌟 최초 로드 시 시트 내 가장 최신 거래 날짜와 최신 정산월로 자동 세팅
+        if (isFirstLoad) {
+          setupLatestMonthAndSettlement();
+          isFirstLoad = false;
+        }
+
         populateSettlementMonthOptions();
         applySettlementFilter();
 
@@ -768,6 +776,39 @@
       }
 
       if (syncSpinner) syncSpinner.classList.remove('fa-spin');
+    }
+
+    // 🌟 최신 달력 연월 및 최신 정산월 자동 감지 & 초기화 헬퍼
+    function setupLatestMonthAndSettlement() {
+      // 1. 거래 내역 중 가장 최신 일자를 찾아 달력 연/월(currentYear, currentMonth)로 세팅
+      const validDates = allTransactions
+        .map(t => t.date)
+        .filter(Boolean)
+        .sort((a, b) => b.localeCompare(a));
+
+      if (validDates.length > 0) {
+        const latestDateStr = validDates[0];
+        const dateParts = latestDateStr.split('-');
+        if (dateParts.length >= 2) {
+          currentYear = parseInt(dateParts[0], 10);
+          currentMonth = parseInt(dateParts[1], 10);
+        }
+      }
+
+      // 2. 존재하는 정산월 중 가장 최신 정산월을 찾아 기본 필터값으로 지정
+      const monthMap = new Map();
+      allTransactions.forEach(t => {
+        const key = t.settlementKey;
+        if (key && !monthMap.has(key)) {
+          monthMap.set(key, formatSettlementDisplay(key));
+        }
+      });
+      const sortedMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+      if (sortedMonths.length > 0) {
+        selectedSettlementMonth = sortedMonths[0]; // 가장 최신 정산월
+      } else {
+        selectedSettlementMonth = 'ALL';
+      }
     }
 
     // ================= PROCESS CSV & COLUMN DETECTION =================
@@ -864,12 +905,6 @@
       const selectEl = document.getElementById('settlementMonthSelect');
       selectEl.innerHTML = '';
 
-      // '전체 정산월' 옵션 기본 제공
-      const allOpt = document.createElement('option');
-      allOpt.value = 'ALL';
-      allOpt.textContent = '전체 정산월 (모두 보기)';
-      selectEl.appendChild(allOpt);
-
       const monthMap = new Map();
       allTransactions.forEach(t => {
         const key = t.settlementKey;
@@ -880,6 +915,7 @@
 
       availableSettlementMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
 
+      // 1. 정산월 목록 옵션 추가 (최신순)
       availableSettlementMonths.forEach(mKey => {
         const opt = document.createElement('option');
         opt.value = mKey;
@@ -887,9 +923,15 @@
         selectEl.appendChild(opt);
       });
 
-      // 기존 선택값이 없거나 유효하지 않으면 'ALL' 유지
-      if (!selectedSettlementMonth || (selectedSettlementMonth !== 'ALL' && !availableSettlementMonths.includes(selectedSettlementMonth))) {
-        selectedSettlementMonth = 'ALL';
+      // 2. '전체 정산월' 옵션도 함께 제공
+      const allOpt = document.createElement('option');
+      allOpt.value = 'ALL';
+      allOpt.textContent = '전체 정산월 (모두 보기)';
+      selectEl.appendChild(allOpt);
+
+      // 현재 선택값이 유효하지 않은 경우 최신 정산월을 기본 선택
+      if (!selectedSettlementMonth || (!availableSettlementMonths.includes(selectedSettlementMonth) && selectedSettlementMonth !== 'ALL')) {
+        selectedSettlementMonth = availableSettlementMonths.length > 0 ? availableSettlementMonths[0] : 'ALL';
       }
       selectEl.value = selectedSettlementMonth;
     }
