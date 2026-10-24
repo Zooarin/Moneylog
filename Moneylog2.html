@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyLog - Calendar & Timeline Expense Tracker</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN (통계 팝업용) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans KR"', '"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.03);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.16);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.28);
+    }
+    .calendar-cell {
+      transition: all 0.18s ease-in-out;
+    }
+    .calendar-cell:hover {
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="bg-slate-100/90 text-slate-800 antialiased min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-xs">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Date Month Navigation & Settlement Month Selector -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-indigo-200 shrink-0">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">MoneyLog</h1>
+            <span class="text-[11px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-200">
+              구글시트 실시간 연동
+            </span>
+            <span id="sheetStatusBadge" class="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="sheetStatusText">시트 연결 중...</span>
+            </span>
+          </div>
+
+          <!-- Month Selector Header & Settlement Month Dropdown (독립 분리) -->
+          <div class="flex items-center gap-2.5 mt-1.5 flex-wrap">
+            <!-- 🌟 정산월 선택 박스 (Google Sheet 컬럼 필터: 달력 월과 독립) -->
+            <div class="flex items-center bg-indigo-50/90 border border-indigo-200/90 rounded-xl px-2 py-1 shadow-2xs">
+              <i class="fa-regular fa-calendar-check text-indigo-600 text-xs mr-1.5"></i>
+              <label for="settlementMonthSelect" class="text-[11px] font-bold text-indigo-950 mr-1.5 shrink-0">정산월</label>
+              <select id="settlementMonthSelect" onchange="onSettlementMonthChange(this.value)" 
+                class="bg-white border border-indigo-200 text-indigo-900 font-extrabold text-xs rounded-lg px-2 py-0.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs">
+                <option value="ALL">전체 정산월</option>
+              </select>
+            </div>
+
+            <!-- 🌟 달력 기준 월 이동 (실제 결제일자 기준: 정산월과 독립) -->
+            <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-1.5 py-0.5 shadow-2xs">
+              <span class="text-[10px] font-semibold text-slate-400 mr-1 pl-1 hidden sm:inline">달력 기준:</span>
+              <button onclick="changeMonth(-1)" class="w-6 h-6 rounded-md hover:bg-white text-slate-600 flex items-center justify-center text-xs transition" title="달력 이전 달">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <span id="currentMonthLabel" class="text-xs font-bold text-slate-800 px-1.5">2026년 10월</span>
+              <button onclick="changeMonth(1)" class="w-6 h-6 rounded-md hover:bg-white text-slate-600 flex items-center justify-center text-xs transition" title="달력 다음 달">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <!-- 시트 새로고침 버튼 -->
+            <button onclick="fetchSheetData(true)" id="btnSyncSheet" title="구글 시트 즉시 새로고침" 
+              class="h-6 px-2 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 border border-slate-200 text-[11px] font-medium flex items-center gap-1 transition">
+              <i class="fa-solid fa-arrows-rotate text-[10px]" id="syncSpinner"></i>
+              <span>동기화</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Google Sheet URL Manager Modal Trigger -->
+        <button onclick="openSheetModal()" 
+          class="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition"
+          title="구글 시트 링크 확인 및 설정">
+          <i class="fa-solid fa-table text-emerald-600"></i>
+          <span class="hidden sm:inline">시트 설정</span>
+        </button>
+
+        <!-- View Mode (Mobile Frame vs Expanded Wide Mode) -->
+        <button onclick="toggleViewLayout()" id="layoutToggleBtn" 
+          class="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 transition"
+          title="모바일 1열 뷰 / 데스크톱 2열 뷰 전환">
+          <i class="fa-solid fa-table-columns text-slate-500" id="layoutIcon"></i>
+          <span id="layoutText">2열 와이드 뷰</span>
+        </button>
+
+        <!-- Analytics Modal Trigger -->
+        <button onclick="openAnalyticsModal()" 
+          class="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition">
+          <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+          <span class="hidden sm:inline">통계 보기</span>
+        </button>
+
+        <!-- New Transaction Button -->
+        <button onclick="openAddModal()" 
+          class="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-200 transition">
+          <i class="fa-solid fa-plus"></i>
+          <span>내역 쓰기</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MONTHLY SUMMARY BAR ================= -->
+  <section class="bg-white border-b border-slate-200 px-4 py-3">
+    <div class="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+      
+      <!-- Card 1: Total Expense -->
+      <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">이번 달 총 지출</span>
+          <span class="text-sm sm:text-base font-extrabold text-rose-600" id="sumExpenseHeader">0원</span>
+        </div>
+        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-arrow-trend-down"></i>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Income -->
+      <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">이번 달 총 수입</span>
+          <span class="text-sm sm:text-base font-extrabold text-emerald-600" id="sumIncomeHeader">0원</span>
+        </div>
+        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-arrow-trend-up"></i>
+        </div>
+      </div>
+
+      <!-- Card 3: Remaining Budget -->
+      <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium" id="budgetCardTitle">카드 예산 잔여액 (씨티+쿠팡 240만)</span>
+          <span class="text-sm sm:text-base font-extrabold text-slate-900" id="sumBudgetRemaining">0원</span>
+        </div>
+        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-piggy-bank"></i>
+        </div>
+      </div>
+
+      <!-- Card 4: Zero Spend Days -->
+      <div class="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] text-amber-700 block font-medium">데이터 기간 내 무지출일</span>
+          <span class="text-sm sm:text-base font-extrabold text-amber-900" id="zeroSpendCountLabel">0일 달성</span>
+        </div>
+        <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 font-bold">
+          ✨
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5">
+    <div id="mainLayoutGrid" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      
+      <!-- ================= LEFT COLUMN: 3번 CALENDAR & BUCKETS ================= -->
+      <div class="lg:col-span-7 space-y-4">
+        
+        <!-- 3-1. Monthly Calendar Card -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+          
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+              <h2 class="text-sm sm:text-base font-bold text-slate-900">지출 달력</h2>
+              <span class="text-[11px] text-slate-400 font-normal">날짜를 클릭하면 아래 내역이 필터링됩니다</span>
+            </div>
+            <!-- Reset Filter / View All button -->
+            <button onclick="clearDateFilter()" id="btnResetFilter" 
+              class="hidden text-[11px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition items-center gap-1">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i>
+              <span>전체 날짜 보기</span>
+            </button>
+          </div>
+
+          <!-- Day names of week -->
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-2">
+            <span class="text-rose-500 py-1">일</span>
+            <span class="py-1">월</span>
+            <span class="py-1">화</span>
+            <span class="py-1">수</span>
+            <span class="py-1">목</span>
+            <span class="py-1">금</span>
+            <span class="text-blue-500 py-1">토</span>
+          </div>
+
+          <!-- Calendar Grid Cells -->
+          <div class="grid grid-cols-7 gap-1 sm:gap-1.5 text-center" id="calendarGrid">
+            <!-- Dynamically populated by JS -->
+          </div>
+
+          <!-- Calendar Legend & Help -->
+          <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            <div class="flex items-center gap-3">
+              <span class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>지출 있음
+              </span>
+              <span class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>무지출일(데이터 구간 내)
+              </span>
+              <span class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-indigo-600"></span>오늘
+              </span>
+            </div>
+            <div class="text-[10px] text-slate-400">
+              클릭 시 해당일자 고정
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3-2. Envelope Budget (씨티카드 / 쿠팡카드 / 현금 예산 현황) -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+          <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-credit-card text-indigo-500 text-sm"></i>
+              <h3 class="text-sm font-bold text-slate-900">결제수단별 예산 현황 (한도 관리)</h3>
+            </div>
+            <span class="text-[11px] text-slate-400 font-medium">씨티 200만 • 쿠팡 40만 • 현금 미지정</span>
+          </div>
+
+          <div class="space-y-3.5 text-xs" id="bucketBudgetContainer">
+            <!-- Dynamically populated by JS (씨티카드, 쿠팡카드, 현금) -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= RIGHT/LOWER COLUMN: 1번 TIMELINE FEED ================= -->
+      <div class="lg:col-span-5 space-y-4">
+        
+        <!-- Timeline Feed Card -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col">
+          
+          <!-- Timeline Header & Filtering -->
+          <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide" id="timelineSubTitle">전체 타임라인 내역</span>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <h2 class="text-base sm:text-lg font-bold text-slate-900" id="timelineMainTitle">전체 거래 내역</h2>
+                  <span id="activeFilterBadge" class="hidden text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">
+                    특정일 필터중
+                  </span>
+                </div>
+              </div>
+
+              <!-- Quick Add in Feed -->
+              <button onclick="openAddModal()" 
+                class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center text-xs shadow-xs" title="내역 추가">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+
+            <!-- Category Filter Pills -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar" id="categoryFilterBar">
+              <button onclick="setCategoryFilter('ALL')" id="filter-btn-ALL" 
+                class="px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px]">
+                전체
+              </button>
+              <button onclick="setCategoryFilter('식비/카페')" id="filter-btn-식비/카페" 
+                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
+                식비/카페
+              </button>
+              <button onclick="setCategoryFilter('교통/차량')" id="filter-btn-교통/차량" 
+                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
+                교통/차량
+              </button>
+              <button onclick="setCategoryFilter('쇼핑/생활')" id="filter-btn-쇼핑/생활" 
+                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
+                쇼핑/생활
+              </button>
+              <button onclick="setCategoryFilter('문화/여가')" id="filter-btn-문화/여가" 
+                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
+                문화/여가
+              </button>
+              <button onclick="setCategoryFilter('주거/통신')" id="filter-btn-주거/통신" 
+                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
+                주거/통신
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Selected Date Summary Alert Bar (shown when a day is clicked) -->
+          <div id="selectedDateFocusBox" class="hidden px-4 py-2.5 bg-indigo-50/70 border-b border-indigo-100 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-1.5 text-indigo-950 font-medium">
+              <i class="fa-regular fa-calendar-check text-indigo-600"></i>
+              <span id="selectedFocusDateText">선택된 날짜 내역</span>
+            </div>
+            <button onclick="clearDateFilter()" class="text-[11px] text-indigo-700 hover:underline font-semibold">
+              필터 해제 ✕
+            </button>
+          </div>
+
+          <!-- 1번 피드 리스트 본체 -->
+          <div class="p-4 space-y-4 max-h-[620px] overflow-y-auto" id="timelineFeedList">
+            <!-- Dynamically populated grouped timeline cards -->
+          </div>
+
+          <!-- Timeline Footer -->
+          <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>표시된 거래 내역: <strong class="text-slate-800" id="renderedItemCount">0</strong>건</span>
+            <button onclick="openAddModal()" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>지출 즉시 기록</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= MODAL: ADD / EDIT TRANSACTION ================= -->
+  <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 transform transition-all">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+          <span>새 거래 내역 등록</span>
+        </h3>
+        <button onclick="closeAddModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleNewTransaction(event)" class="space-y-3.5 text-xs">
+        <!-- Expense / Income Selection -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">구분</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="setModalType('지출')" id="btnModalExpense" 
+              class="py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 font-bold flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-minus"></i>
+              <span>지출</span>
+            </button>
+            <button type="button" onclick="setModalType('수입')" id="btnModalIncome" 
+              class="py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-plus"></i>
+              <span>수입</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Date Picker -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">날짜</label>
+          <input type="date" id="inputDate" required
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-xs text-slate-900">
+        </div>
+
+        <!-- Amount -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">금액 (원)</label>
+          <input type="number" id="inputAmount" placeholder="예: 12000" min="1" required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-base font-bold text-slate-900">
+        </div>
+
+        <!-- Title -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">내용 / 사용처 (title)</label>
+          <input type="text" id="inputTitle" placeholder="예: 스타벅스 아메리카노, 서점 책 구매" required
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-xs text-slate-900">
+        </div>
+
+        <!-- Category & Pay Method -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">카테고리</label>
+            <select id="inputCategory" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-xs text-slate-800">
+              <option value="식비/카페">식비/카페</option>
+              <option value="교통/차량">교통/차량</option>
+              <option value="쇼핑/생활">쇼핑/생활</option>
+              <option value="문화/여가">문화/여가</option>
+              <option value="주거/통신">주거/통신</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">결제 수단</label>
+            <select id="inputPayMethod" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-xs text-slate-800">
+              <option value="씨티카드">씨티카드</option>
+              <option value="쿠팡카드">쿠팡카드</option>
+              <option value="현금">현금</option>
+              <option value="계좌이체">계좌이체</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeAddModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-semibold">
+            취소
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-xs">
+            등록하기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: ANALYTICS (2번 차트 기능 결합) ================= -->
+  <div id="analyticsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">📊 소비 통계 분석</h3>
+          <p class="text-[11px] text-slate-400">카테고리별 비중 및 지출 흐름</p>
+        </div>
+        <button onclick="closeAnalyticsModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Donut Chart Canvas Container -->
+      <div class="h-56 relative mb-4 flex items-center justify-center">
+        <canvas id="modalDonutChart"></canvas>
+      </div>
+
+      <!-- Category Breakdown List -->
+      <div class="space-y-2 text-xs" id="analyticsBreakdownList">
+        <!-- Dynamically populated -->
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+        <button onclick="closeAnalyticsModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: GOOGLE SHEET SETTINGS & STATUS ================= -->
+  <div id="sheetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 transform transition-all">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-file-csv text-emerald-600"></i>
+          <span>구글 스프레드시트 연동 정보</span>
+        </h3>
+        <button onclick="closeSheetModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">연결된 구글 시트 웹 게시 CSV 링크</label>
+          <input type="text" id="sheetUrlInput" 
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-[11px] text-slate-800 bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
+          <p class="text-[10px] text-slate-400 mt-1">시트 메뉴의 [파일] > [공유] > [웹에 게시]에서 형식: CSV로 게시된 링크입니다.</p>
+        </div>
+
+        <div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-100 text-indigo-950 space-y-1">
+          <div class="font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-indigo-600"></i>
+            <span>자동 컬럼 매핑 안내</span>
+          </div>
+          <p class="text-[11px] text-indigo-800 leading-relaxed">
+            시트의 <code class="font-mono bg-white px-1 rounded text-indigo-900">정산월</code> 컬럼을 분석하여 선택 박스에 월 목록을 표시하고, 
+            <code class="font-mono bg-white px-1 rounded text-indigo-900">title</code>(내역/사용처), <code class="font-mono bg-white px-1 rounded text-indigo-900">금액</code>, <code class="font-mono bg-white px-1 rounded text-indigo-900">카테고리</code>를 캘린더 및 피드에 동기화합니다.
+          </p>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeSheetModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-semibold">
+            닫기
+          </button>
+          <button type="button" onclick="applySheetUrlAndFetch()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-xs flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+            <span>동기화 적용하기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOAST NOTIFICATION ================= -->
+  <div id="toastNotification" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white text-xs px-4 py-2.5 rounded-full shadow-lg pointer-events-none transition-all duration-300 opacity-0 transform translate-y-3 z-50 flex items-center gap-2">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMsg">등록되었습니다.</span>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // ================= CONFIGURATION & GLOBAL STATE =================
+    let GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRuvEUQgdDmlQBOvleIdzeGgqdpvV43OXuXeSNVwORH4IC246QkpskQhtwgp_BkKGXp3_-LlqfQbm5m/pub?gid=0&single=true&output=csv';
+
+    // 달력 표시 연/월 (실제 거래 일자 Date 기준 - 시트 로드시 최신 데이터로 자동 갱신됨)
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1; // 1-12
+    let isFirstLoad = true; // 최초 접속 시 최신 연월 자동 지정을 위한 플래그
+
+    let selectedDateFilter = null; // 'YYYY-MM-DD' or null
+    let activeCategory = 'ALL';
+    let isWideLayout = true;
+    let modalTransType = '지출';
+    let chartInstance = null;
+
+    // 전체 로드된 트랜잭션 데이터 및 정산월 목록
+    let allTransactions = [];
+    let transactions = []; // 정산월 필터가 적용된 거래 내역
+    let availableSettlementMonths = []; // 예: ['2026-10', '2026-09', ...]
+    let selectedSettlementMonth = null; // 초기 로드시 최신 정산월로 자동 설정
+
+    // 카테고리별 테마 및 아이콘 매핑
+    const categoryPalette = [
+      { key: '식비', icon: 'fa-utensils', color: 'bg-rose-100 text-rose-600', dot: '#f43f5e', bar: 'bg-rose-500' },
+      { key: '카페', icon: 'fa-mug-saucer', color: 'bg-amber-100 text-amber-700', dot: '#d97706', bar: 'bg-amber-500' },
+      { key: '교통', icon: 'fa-bus', color: 'bg-sky-100 text-sky-600', dot: '#0284c7', bar: 'bg-sky-500' },
+      { key: '쇼핑', icon: 'fa-bag-shopping', color: 'bg-indigo-100 text-indigo-600', dot: '#6366f1', bar: 'bg-indigo-500' },
+      { key: '생활', icon: 'fa-house-chimney', color: 'bg-violet-100 text-violet-600', dot: '#8b5cf6', bar: 'bg-violet-500' },
+      { key: '문화', icon: 'fa-film', color: 'bg-purple-100 text-purple-600', dot: '#a855f7', bar: 'bg-purple-500' },
+      { key: '여가', icon: 'fa-gamepad', color: 'bg-pink-100 text-pink-600', dot: '#ec4899', bar: 'bg-pink-500' },
+      { key: '주거', icon: 'fa-house', color: 'bg-blue-100 text-blue-600', dot: '#3b82f6', bar: 'bg-blue-500' },
+      { key: '통신', icon: 'fa-wifi', color: 'bg-cyan-100 text-cyan-700', dot: '#0891b2', bar: 'bg-cyan-500' },
+      { key: '의료', icon: 'fa-briefcase-medical', color: 'bg-emerald-100 text-emerald-600', dot: '#10b981', bar: 'bg-emerald-500' },
+      { key: '교육', icon: 'fa-graduation-cap', color: 'bg-teal-100 text-teal-700', dot: '#0d9488', bar: 'bg-teal-500' },
+      { key: '기타', icon: 'fa-wallet', color: 'bg-slate-100 text-slate-600', dot: '#64748b', bar: 'bg-slate-500' }
+    ];
+
+    function getCategoryMeta(catName) {
+      if (!catName) return categoryPalette[categoryPalette.length - 1];
+      const found = categoryPalette.find(item => catName.includes(item.key));
+      return found || {
+        key: catName,
+        icon: 'fa-tag',
+        color: 'bg-slate-100 text-slate-700',
+        dot: '#64748b',
+        bar: 'bg-indigo-500'
+      };
+    }
+
+    // ================= RFC-4180 COMPLIANT CSV PARSER =================
+    function parseCSV(text) {
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1); // UTF-8 BOM 제거
+      }
+      const lines = [];
+      let row = [];
+      let insideQuote = false;
+      let entry = '';
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"') {
+          if (insideQuote && nextChar === '"') {
+            entry += '"';
+            i++;
+          } else {
+            insideQuote = !insideQuote;
+          }
+        } else if (char === ',' && !insideQuote) {
+          row.push(entry.trim());
+          entry = '';
+        } else if ((char === '\r' || char === '\n') && !insideQuote) {
+          row.push(entry.trim());
+          entry = '';
+          if (row.some(val => val !== '')) {
+            lines.push(row);
+          }
+          row = [];
+          if (char === '\r' && nextChar === '\n') {
+            i++;
+          }
+        } else {
+          entry += char;
+        }
+      }
+      if (entry.length > 0 || row.length > 0) {
+        row.push(entry.trim());
+        if (row.some(val => val !== '')) {
+          lines.push(row);
+        }
+      }
+      return lines;
+    }
+
+    // ================= DATE & NUMBER PARSING HELPERS =================
+    function parseYearMonth(val) {
+      if (!val) return null;
+      val = String(val).trim();
+      
+      let m = val.match(/(\d{4})\s*년\s*(\d{1,2})\s*월/);
+      if (m) return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+
+      m = val.match(/(\d{4})[-./년\s]+(\d{1,2})/);
+      if (m) return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+
+      m = val.match(/^(\d{4})(\d{2})$/);
+      if (m) return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+
+      m = val.match(/^(\d{1,2})\s*월$/);
+      if (m) return { year: currentYear || 2026, month: parseInt(m[1], 10) };
+
+      return null;
+    }
+
+    function normalizeSettlementKey(val) {
+      const ym = parseYearMonth(val);
+      if (ym) {
+        return `${ym.year}-${String(ym.month).padStart(2, '0')}`;
+      }
+      return String(val).trim();
+    }
+
+    function formatSettlementDisplay(val) {
+      const ym = parseYearMonth(val);
+      if (ym) {
+        return `${ym.year}년 ${ym.month}월`;
+      }
+      return String(val || '');
+    }
+
+    function parseItemDate(val, fallbackYear, fallbackMonth) {
+      if (!val) {
+        return `${fallbackYear}-${String(fallbackMonth).padStart(2, '0')}-01`;
+      }
+      val = String(val).trim();
+
+      let m = val.match(/(\d{4})[-./년\s]+(\d{1,2})[-./월\s]+(\d{1,2})/);
+      if (m) {
+        const y = m[1];
+        const mo = String(parseInt(m[2], 10)).padStart(2, '0');
+        const d = String(parseInt(m[3], 10)).padStart(2, '0');
+        return `${y}-${mo}-${d}`;
+      }
+
+      m = val.match(/(\d{1,2})[-./월\s]+(\d{1,2})/);
+      if (m) {
+        const y = fallbackYear || currentYear;
+        const mo = String(parseInt(m[1], 10)).padStart(2, '0');
+        const d = String(parseInt(m[2], 10)).padStart(2, '0');
+        return `${y}-${mo}-${d}`;
+      }
+
+      m = val.match(/^(\d{1,2})일?$/);
+      if (m) {
+        const y = fallbackYear || currentYear;
+        const mo = String(fallbackMonth || currentMonth).padStart(2, '0');
+        const d = String(parseInt(m[1], 10)).padStart(2, '0');
+        return `${y}-${mo}-${d}`;
+      }
+
+      return `${fallbackYear}-${String(fallbackMonth).padStart(2, '0')}-01`;
+    }
+
+    function parseAmountNumber(val) {
+      if (val === undefined || val === null) return 0;
+      if (typeof val === 'number') return Math.abs(val);
+      const clean = String(val).replace(/[^0-9.-]/g, '');
+      const num = parseFloat(clean);
+      return isNaN(num) ? 0 : Math.abs(Math.round(num));
+    }
+
+    // ================= FETCH GOOGLE SHEET DATA =================
+    async function fetchSheetData(isManualRefresh = false) {
+      const statusBadge = document.getElementById('sheetStatusBadge');
+      const statusText = document.getElementById('sheetStatusText');
+      const syncSpinner = document.getElementById('syncSpinner');
+
+      if (syncSpinner) syncSpinner.classList.add('fa-spin');
+      if (statusText) statusText.textContent = '동기화 중...';
+      if (statusBadge) {
+        statusBadge.className = 'text-[10px] bg-amber-50 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1';
+      }
+
+      let csvText = '';
+      try {
+        const response = await fetch(GOOGLE_SHEET_CSV_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        csvText = await response.text();
+      } catch (err) {
+        console.warn('Direct fetch failed. Retrying with CORS Proxy fallback...', err);
+        try {
+          const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(GOOGLE_SHEET_CSV_URL);
+          const proxyRes = await fetch(proxyUrl);
+          if (!proxyRes.ok) throw new Error('Proxy fetch failed');
+          csvText = await proxyRes.text();
+        } catch (proxyErr) {
+          console.error('All fetch attempts failed:', proxyErr);
+          if (statusBadge) {
+            statusBadge.className = 'text-[10px] bg-rose-50 text-rose-700 font-semibold px-2 py-0.5 rounded-full border border-rose-200 flex items-center gap-1';
+          }
+          if (statusText) statusText.textContent = '연동 실패 (클릭하여 확인)';
+          showToast('구글 시트 연동에 실패했습니다. 링크 설정을 확인해주세요.');
+          if (syncSpinner) syncSpinner.classList.remove('fa-spin');
+          return;
+        }
+      }
+
+      const parsedData = processSheetCSV(csvText);
+      if (parsedData.length > 0) {
+        allTransactions = parsedData;
+
+        // 🌟 최초 로드 시 시트 내 가장 최신 거래 날짜와 최신 정산월로 자동 세팅
+        if (isFirstLoad) {
+          setupLatestMonthAndSettlement();
+          isFirstLoad = false;
+        }
+
+        populateSettlementMonthOptions();
+        applySettlementFilter();
+
+        if (statusBadge) {
+          statusBadge.className = 'text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1';
+        }
+        if (statusText) statusText.textContent = `연동 완료 (${allTransactions.length}건)`;
+        if (isManualRefresh) {
+          showToast(`시트 데이터가 새로고침되었습니다 (${allTransactions.length}건).`);
+        }
+      } else {
+        if (statusText) statusText.textContent = '데이터 없음';
+        showToast('시트에서 유효한 거래 내역을 찾을 수 없습니다.');
+      }
+
+      if (syncSpinner) syncSpinner.classList.remove('fa-spin');
+    }
+
+    // 🌟 최신 달력 연월 및 최신 정산월 자동 감지 & 초기화 헬퍼
+    function setupLatestMonthAndSettlement() {
+      // 1. 거래 내역 중 가장 최신 일자를 찾아 달력 연/월(currentYear, currentMonth)로 세팅
+      const validDates = allTransactions
+        .map(t => t.date)
+        .filter(Boolean)
+        .sort((a, b) => b.localeCompare(a));
+
+      if (validDates.length > 0) {
+        const latestDateStr = validDates[0];
+        const dateParts = latestDateStr.split('-');
+        if (dateParts.length >= 2) {
+          currentYear = parseInt(dateParts[0], 10);
+          currentMonth = parseInt(dateParts[1], 10);
+        }
+      }
+
+      // 2. 존재하는 정산월 중 가장 최신 정산월을 찾아 기본 필터값으로 지정
+      const monthMap = new Map();
+      allTransactions.forEach(t => {
+        const key = t.settlementKey;
+        if (key && !monthMap.has(key)) {
+          monthMap.set(key, formatSettlementDisplay(key));
+        }
+      });
+      const sortedMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+      if (sortedMonths.length > 0) {
+        selectedSettlementMonth = sortedMonths[0]; // 가장 최신 정산월
+      } else {
+        selectedSettlementMonth = 'ALL';
+      }
+    }
+
+    // ================= PROCESS CSV & COLUMN DETECTION =================
+    function processSheetCSV(csvText) {
+      const rows = parseCSV(csvText);
+      if (rows.length < 2) return [];
+
+      const headers = rows[0].map(h => h.replace(/[\ufeff\s"']/g, '').trim());
+
+      const findColIdx = (candidates) => {
+        for (const cand of candidates) {
+          const idx = headers.findIndex(h => h.toLowerCase().includes(cand.toLowerCase()));
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+
+      const settlementCol = findColIdx(['정산월', '정산', '기준월', '해당월', '월', 'Month']);
+      const dateCol = findColIdx(['날짜', '일자', '거래일시', '거래일', '일시', 'Date', 'Day']);
+      const typeCol = findColIdx(['구분', '유형', '입출', '지출/수입', '수입/지출', 'Type']);
+      const categoryCol = findColIdx(['카테고리', '분류', '대분류', '항목', 'Category']);
+      
+      // 🌟 지출내역은 'title' 컬럼을 최우선으로 매핑
+      let titleCol = headers.findIndex(h => h.toLowerCase() === 'title');
+      if (titleCol === -1) {
+        titleCol = findColIdx(['title', '내역', '사용처', '내용', '적요', '가맹점', '거래처', '상호', '메모', 'Item', 'Description']);
+      }
+
+      const amountCol = findColIdx(['금액', '지출금액', '결제금액', '사용금액', '거래금액', 'Amount', '지출', 'Price']);
+      const incomeCol = findColIdx(['수입금액', '수입', '입금액', 'Income']);
+      const payMethodCol = findColIdx(['결제수단', '결제방법', '수단', '카드', '결제', '자산', '계좌', 'PayMethod', 'Payment', 'Method']);
+
+      const items = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0 || row.every(c => c === '')) continue;
+
+        let rawSettlement = settlementCol !== -1 && row[settlementCol] ? row[settlementCol].trim() : '';
+        const normalizedSettlement = normalizeSettlementKey(rawSettlement);
+
+        const ym = parseYearMonth(rawSettlement);
+        const fallbackYear = ym ? ym.year : currentYear;
+        const fallbackMonth = ym ? ym.month : currentMonth;
+
+        const rawDate = dateCol !== -1 && row[dateCol] ? row[dateCol] : '';
+        const itemDate = parseItemDate(rawDate, fallbackYear, fallbackMonth);
+
+        let rawAmountStr = amountCol !== -1 && row[amountCol] ? row[amountCol] : '0';
+        let amount = parseAmountNumber(rawAmountStr);
+        let type = '지출';
+
+        if (typeCol !== -1 && row[typeCol]) {
+          const tVal = row[typeCol].trim();
+          if (tVal.includes('수입') || tVal.includes('입금') || tVal.includes('급여')) {
+            type = '수입';
+          } else {
+            type = '지출';
+          }
+        } else if (incomeCol !== -1 && row[incomeCol]) {
+          const incVal = parseAmountNumber(row[incomeCol]);
+          if (incVal > 0) {
+            type = '수입';
+            amount = incVal;
+          }
+        } else if (String(rawAmountStr).includes('+')) {
+          type = '수입';
+        }
+
+        const title = (titleCol !== -1 && row[titleCol]) ? row[titleCol].trim() : '지출 내역';
+        let category = (categoryCol !== -1 && row[categoryCol]) ? row[categoryCol].trim() : '기타';
+        if (!category) category = '기타';
+
+        const payMethod = (payMethodCol !== -1 && row[payMethodCol]) ? row[payMethodCol].trim() : '현금/기타';
+
+        items.push({
+          id: i,
+          rawSettlement: rawSettlement || normalizedSettlement,
+          settlementKey: normalizedSettlement,
+          date: itemDate,
+          type: type,
+          category: category,
+          title: title,
+          amount: amount,
+          payMethod: payMethod
+        });
+      }
+
+      return items;
+    }
+
+    // ================= SETTLEMENT MONTH POPULATION & FILTERING =================
+    function populateSettlementMonthOptions() {
+      const selectEl = document.getElementById('settlementMonthSelect');
+      selectEl.innerHTML = '';
+
+      const monthMap = new Map();
+      allTransactions.forEach(t => {
+        const key = t.settlementKey;
+        if (key && !monthMap.has(key)) {
+          monthMap.set(key, formatSettlementDisplay(key));
+        }
+      });
+
+      availableSettlementMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+
+      // 1. 정산월 목록 옵션 추가 (최신순)
+      availableSettlementMonths.forEach(mKey => {
+        const opt = document.createElement('option');
+        opt.value = mKey;
+        opt.textContent = formatSettlementDisplay(mKey);
+        selectEl.appendChild(opt);
+      });
+
+      // 2. '전체 정산월' 옵션도 함께 제공
+      const allOpt = document.createElement('option');
+      allOpt.value = 'ALL';
+      allOpt.textContent = '전체 정산월 (모두 보기)';
+      selectEl.appendChild(allOpt);
+
+      // 현재 선택값이 유효하지 않은 경우 최신 정산월을 기본 선택
+      if (!selectedSettlementMonth || (!availableSettlementMonths.includes(selectedSettlementMonth) && selectedSettlementMonth !== 'ALL')) {
+        selectedSettlementMonth = availableSettlementMonths.length > 0 ? availableSettlementMonths[0] : 'ALL';
+      }
+      selectEl.value = selectedSettlementMonth;
+    }
+
+    function onSettlementMonthChange(val) {
+      selectedSettlementMonth = val;
+      // 🌟 정산월을 변경하더라도 달력의 currentYear/currentMonth는 절대로 강제 변경하지 않음
+      applySettlementFilter();
+    }
+
+    function applySettlementFilter() {
+      if (selectedSettlementMonth && selectedSettlementMonth !== 'ALL') {
+        transactions = allTransactions.filter(t => t.settlementKey === selectedSettlementMonth);
+      } else {
+        transactions = [...allTransactions];
+      }
+
+      selectedDateFilter = null;
+      refreshAll();
+    }
+
+    // ================= HELPER: 데이터가 있는 날 사이의 무지출 일자 계산 =================
+    function getZeroSpendDaysInfo() {
+      // 현재 달력에 표시되는 해당 월(currentYear, currentMonth)에 해당하는 트랜잭션 우선 확인
+      const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(currentMonthPrefix));
+
+      if (monthTransactions.length === 0) {
+        return { minDate: null, maxDate: null, zeroSpendDates: new Set() };
+      }
+
+      const datesWithData = monthTransactions.map(t => t.date).filter(Boolean).sort();
+      if (datesWithData.length === 0) {
+        return { minDate: null, maxDate: null, zeroSpendDates: new Set() };
+      }
+
+      const minDateStr = datesWithData[0];
+      const maxDateStr = datesWithData[datesWithData.length - 1];
+
+      const zeroSpendDates = new Set();
+      const cur = new Date(minDateStr);
+      const end = new Date(maxDateStr);
+
+      while (cur <= end) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const d = String(cur.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
+
+        const hasExpense = monthTransactions.some(t => t.date === dateStr && t.type === '지출' && t.amount > 0);
+        if (!hasExpense) {
+          zeroSpendDates.add(dateStr);
+        }
+
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      return {
+        minDate: minDateStr,
+        maxDate: maxDateStr,
+        zeroSpendDates: zeroSpendDates
+      };
+    }
+
+    // ================= 결제수단별 지출 분류 헬퍼 =================
+    function classifyBudgetBucket(item) {
+      const combined = `${item.payMethod} ${item.category} ${item.title}`.toLowerCase();
+      if (combined.includes('씨티') || combined.includes('citi') || combined.includes('city')) {
+        return '씨티카드';
+      }
+      if (combined.includes('쿠팡') || combined.includes('coupang')) {
+        return '쿠팡카드';
+      }
+      return '현금';
+    }
+
+    // ================= UI REFRESH & STATS =================
+    function refreshAll() {
+      renderHeaderStats();
+      renderCalendar();
+      renderBudgetBuckets();
+      renderTimelineFeed();
+      renderCategoryFilterButtons();
+    }
+
+    function renderHeaderStats() {
+      // 🌟 달력 월 라벨은 순수하게 달력의 현재 연월(currentYear, currentMonth)을 표시
+      document.getElementById('currentMonthLabel').textContent = `${currentYear}년 ${currentMonth}월`;
+
+      // 통계 계산: 정산월 필터가 활성화된 경우 해당 정산월 전체, ALL인 경우 현재 달력 월 기준
+      let statTransactions = transactions;
+      if (selectedSettlementMonth === 'ALL') {
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        statTransactions = transactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+      }
+
+      const expenses = statTransactions.filter(t => t.type === '지출');
+      const monthExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
+      const monthIncome = statTransactions.filter(t => t.type === '수입').reduce((sum, t) => sum + t.amount, 0);
+
+      const citiSpend = expenses.filter(t => classifyBudgetBucket(t) === '씨티카드').reduce((s, t) => s + t.amount, 0);
+      const coupangSpend = expenses.filter(t => classifyBudgetBucket(t) === '쿠팡카드').reduce((s, t) => s + t.amount, 0);
+      const cardTotalLimit = 2400000;
+      const cardTotalSpent = citiSpend + coupangSpend;
+      const cardRemaining = cardTotalLimit - cardTotalSpent;
+
+      const { zeroSpendDates } = getZeroSpendDaysInfo();
+
+      document.getElementById('sumExpenseHeader').textContent = monthExpense.toLocaleString() + '원';
+      document.getElementById('sumIncomeHeader').textContent = monthIncome.toLocaleString() + '원';
+      
+      const budgetRemainingEl = document.getElementById('sumBudgetRemaining');
+      if (cardRemaining >= 0) {
+        budgetRemainingEl.textContent = cardRemaining.toLocaleString() + '원';
+        budgetRemainingEl.className = 'text-sm sm:text-base font-extrabold text-slate-900';
+      } else {
+        budgetRemainingEl.textContent = `초과 (${Math.abs(cardRemaining).toLocaleString()}원)`;
+        budgetRemainingEl.className = 'text-sm sm:text-base font-extrabold text-rose-600';
+      }
+
+      document.getElementById('zeroSpendCountLabel').textContent = `${zeroSpendDates.size}일 달성`;
+    }
+
+    // ================= 3번 CALENDAR RENDER =================
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+
+      const firstDayIndex = new Date(currentYear, currentMonth - 1, 1).getDay();
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const prevMonthDays = new Date(currentYear, currentMonth - 1, 0).getDate();
+      const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+      const resetBtn = document.getElementById('btnResetFilter');
+      if (selectedDateFilter) {
+        resetBtn.classList.remove('hidden');
+        resetBtn.classList.add('flex');
+      } else {
+        resetBtn.classList.add('hidden');
+        resetBtn.classList.remove('flex');
+      }
+
+      const { zeroSpendDates } = getZeroSpendDaysInfo();
+
+      // 이전 달 패딩 셀
+      for (let i = 0; i < firstDayIndex; i++) {
+        const prevDayNum = prevMonthDays - firstDayIndex + i + 1;
+        const padCell = document.createElement('div');
+        padCell.className = 'h-13 sm:h-16 p-1 text-[10px] sm:text-xs text-slate-300 bg-slate-50/40 rounded-xl flex flex-col justify-between select-none';
+        padCell.innerHTML = `<span>${prevDayNum}</span>`;
+        grid.appendChild(padCell);
+      }
+
+      // 이번 달 날짜 셀 (실제 거래일자 date 기준으로 매핑)
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+        const dayOfWeek = (firstDayIndex + d - 1) % 7;
+        const isToday = (new Date().toISOString().slice(0, 10) === dateStr);
+        const isSelected = (selectedDateFilter === dateStr);
+
+        // 현재 날짜(date)에 해당하는 거래들
+        const dayTxs = transactions.filter(t => t.date === dateStr);
+        const dayExpense = dayTxs.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
+
+        const isZeroSpend = zeroSpendDates.has(dateStr);
+
+        const cell = document.createElement('div');
+        cell.className = `calendar-cell h-13 sm:h-16 p-1 sm:p-1.5 rounded-xl border cursor-pointer flex flex-col justify-between text-left select-none relative ${
+          isSelected 
+            ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-400 font-bold shadow-xs' 
+            : isToday 
+              ? 'border-indigo-300 bg-indigo-50/30 ring-1 ring-indigo-200' 
+              : 'border-slate-100 hover:border-slate-300 bg-white'
+        }`;
+
+        cell.onclick = () => onSelectDate(dateStr);
+
+        let dateColor = 'text-slate-700';
+        if (dayOfWeek === 0) dateColor = 'text-rose-500 font-medium';
+        if (dayOfWeek === 6) dateColor = 'text-blue-500 font-medium';
+        if (isToday) dateColor = 'text-indigo-600 font-extrabold';
+
+        let badgeHtml = '';
+        if (dayExpense > 0) {
+          const displayAmount = dayExpense >= 10000 
+            ? `-${(dayExpense / 10000).toFixed(1)}만` 
+            : `-${(dayExpense / 1000).toFixed(0)}천`;
+          badgeHtml = `<span class="text-[9px] sm:text-[10px] font-bold text-rose-500 truncate block">${displayAmount}</span>`;
+        } else if (isZeroSpend) {
+          badgeHtml = `<span class="text-[9px] font-bold text-amber-700 bg-amber-100/90 px-1 py-0.5 rounded truncate block shadow-2xs">✨ 무지출</span>`;
+        }
+
+        cell.innerHTML = `
+          <div class="flex justify-between items-center text-[10px] sm:text-xs">
+            <span class="${dateColor}">${d}</span>
+            ${isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-indigo-600" title="오늘"></span>' : ''}
+          </div>
+          <div class="mt-auto overflow-hidden">
+            ${badgeHtml}
+          </div>
+        `;
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // ================= ENVELOPE BUDGET =================
+    function renderBudgetBuckets() {
+      const container = document.getElementById('bucketBudgetContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      let statTransactions = transactions;
+      if (selectedSettlementMonth === 'ALL') {
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        statTransactions = transactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+      }
+
+      const expenses = statTransactions.filter(t => t.type === '지출');
+      let citiSpend = 0;
+      let coupangSpend = 0;
+      let cashSpend = 0;
+
+      expenses.forEach(t => {
+        const bucket = classifyBudgetBucket(t);
+        if (bucket === '씨티카드') citiSpend += t.amount;
+        else if (bucket === '쿠팡카드') coupangSpend += t.amount;
+        else cashSpend += t.amount;
+      });
+
+      const budgetConfigs = [
+        {
+          name: '씨티카드',
+          limit: 2000000,
+          spent: citiSpend,
+          icon: 'fa-credit-card',
+          badgeText: '한도 200만원',
+          themeBorder: 'border-indigo-100',
+          badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          barColor: citiSpend > 2000000 ? 'bg-rose-500' : 'bg-indigo-600'
+        },
+        {
+          name: '쿠팡카드',
+          limit: 400000,
+          spent: coupangSpend,
+          icon: 'fa-credit-card',
+          badgeText: '한도 40만원',
+          themeBorder: 'border-orange-100',
+          badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
+          barColor: coupangSpend > 400000 ? 'bg-rose-500' : 'bg-orange-500'
+        },
+        {
+          name: '현금',
+          limit: null,
+          spent: cashSpend,
+          icon: 'fa-money-bill-wave',
+          badgeText: '한도 미지정',
+          themeBorder: 'border-emerald-100',
+          badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          barColor: 'bg-emerald-500'
+        }
+      ];
+
+      budgetConfigs.forEach(item => {
+        const row = document.createElement('div');
+        row.className = `p-3.5 rounded-2xl bg-slate-50 border ${item.themeBorder} shadow-2xs`;
+
+        let progressHtml = '';
+        let statusTextHtml = '';
+
+        if (item.limit !== null) {
+          const percent = Math.round((item.spent / item.limit) * 100);
+          const barWidth = Math.min(100, percent);
+          const diff = item.limit - item.spent;
+          const isOver = diff < 0;
+
+          progressHtml = `
+            <div class="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-1.5">
+              <div class="${item.barColor} h-2 rounded-full transition-all duration-500" style="width: ${barWidth}%"></div>
+            </div>
+          `;
+
+          statusTextHtml = `
+            <div class="flex justify-between items-center text-[10px]">
+              <span class="${isOver ? 'text-rose-600 font-bold' : 'text-slate-400'}">
+                ${isOver ? `한도 초과: -${Math.abs(diff).toLocaleString()}원` : `남은 한도: ${diff.toLocaleString()}원`}
+              </span>
+              <span class="font-bold ${isOver ? 'text-rose-600' : 'text-slate-600'}">${percent}% 소진</span>
+            </div>
+          `;
+        } else {
+          progressHtml = `
+            <div class="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden mb-1.5">
+              <div class="bg-emerald-400/80 h-2 rounded-full" style="width: 100%"></div>
+            </div>
+          `;
+          statusTextHtml = `
+            <div class="flex justify-between items-center text-[10px] text-slate-400">
+              <span>계좌이체 / 현금결제 / 체크카드 등</span>
+              <span class="text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">자율 지출</span>
+            </div>
+          `;
+        }
+
+        row.innerHTML = `
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-white shadow-2xs border border-slate-200 flex items-center justify-center text-[11px] text-slate-600">
+                <i class="fa-solid ${item.icon}"></i>
+              </div>
+              <span class="font-bold text-slate-800 text-xs">${item.name}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full border ${item.badgeBg} font-medium">${item.badgeText}</span>
+            </div>
+            <div class="text-xs font-extrabold text-slate-900">
+              ${item.spent.toLocaleString()}원
+            </div>
+          </div>
+          ${progressHtml}
+          ${statusTextHtml}
+        `;
+
+        container.appendChild(row);
+      });
+    }
+
+    // ================= 1번 TIMELINE FEED RENDER =================
+    function renderTimelineFeed() {
+      const container = document.getElementById('timelineFeedList');
+      container.innerHTML = '';
+
+      const focusBox = document.getElementById('selectedDateFocusBox');
+      const focusText = document.getElementById('selectedFocusDateText');
+      const badge = document.getElementById('activeFilterBadge');
+      const mainTitle = document.getElementById('timelineMainTitle');
+      const subTitle = document.getElementById('timelineSubTitle');
+
+      let filtered = [...transactions];
+
+      // 날짜 클릭 필터가 있는 경우
+      if (selectedDateFilter) {
+        filtered = filtered.filter(t => t.date === selectedDateFilter);
+        focusBox.classList.remove('hidden');
+        badge.classList.remove('hidden');
+        
+        const dateObj = new Date(selectedDateFilter);
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateFormatted = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`;
+        
+        focusText.textContent = `${dateFormatted} 내역`;
+        mainTitle.textContent = `${dateFormatted} 거래 내역`;
+        subTitle.textContent = '선택한 날짜 내역';
+      } else {
+        // 날짜 선택이 없을 때는 현재 달력 월의 내역을 우선 보여주거나 정산월 필터 내역 표시
+        focusBox.classList.add('hidden');
+        badge.classList.add('hidden');
+
+        if (selectedSettlementMonth !== 'ALL') {
+          mainTitle.textContent = `${formatSettlementDisplay(selectedSettlementMonth)} 정산 거래 내역`;
+          subTitle.textContent = `정산월 필터 (${filtered.length}건)`;
+        } else {
+          mainTitle.textContent = `${currentYear}년 ${currentMonth}월 달력 기준 거래 내역`;
+          subTitle.textContent = '타임라인 피드';
+          // ALL일 때는 현재 보고 있는 달력 월의 거래 내역을 기본 타임라인으로 보여줌
+          const curMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+          filtered = filtered.filter(t => t.date && t.date.startsWith(curMonthPrefix));
+        }
+      }
+
+      if (activeCategory !== 'ALL') {
+        filtered = filtered.filter(t => t.category === activeCategory);
+      }
+
+      document.getElementById('renderedItemCount').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 px-4 text-center">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl mb-3">
+              🎉
+            </div>
+            <h4 class="text-sm font-bold text-slate-800">해당 조건의 내역이 없습니다</h4>
+            <p class="text-xs text-slate-400 mt-1">지출이 없었던 날이거나 필터 조건에 일치하는 내역이 없습니다.</p>
+            ${selectedDateFilter ? `
+              <button onclick="clearDateFilter()" class="mt-3 text-xs px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 font-semibold hover:bg-indigo-100">
+                전체 내역 보기
+              </button>
+            ` : ''}
+          </div>
+        `;
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach(item => {
+        if (!grouped[item.date]) grouped[item.date] = [];
+        grouped[item.date].push(item);
+      });
+
+      const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+      sortedDates.forEach(dateKey => {
+        const items = grouped[dateKey];
+        const dateObj = new Date(dateKey);
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const dayTitle = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`;
+        const dayExpenseSum = items.filter(x => x.type === '지출').reduce((s, x) => s + x.amount, 0);
+
+        const groupWrapper = document.createElement('div');
+        groupWrapper.className = 'space-y-2';
+
+        groupWrapper.innerHTML = `
+          <div class="flex justify-between items-center text-xs px-1 text-slate-500 font-semibold">
+            <span>${dayTitle}</span>
+            <span class="text-[11px] font-medium text-slate-400">지출 합계: <strong class="text-slate-800">${dayExpenseSum.toLocaleString()}원</strong></span>
+          </div>
+        `;
+
+        const cardBox = document.createElement('div');
+        cardBox.className = 'bg-white rounded-2xl border border-slate-200/80 shadow-2xs divide-y divide-slate-100 overflow-hidden';
+
+        items.forEach(item => {
+          const meta = getCategoryMeta(item.category);
+          const isExpense = item.type === '지출';
+          const bucketName = classifyBudgetBucket(item);
+          const settlementTag = formatSettlementDisplay(item.settlementKey || item.rawSettlement);
+
+          const row = document.createElement('div');
+          row.className = 'p-3 sm:p-3.5 flex items-center justify-between hover:bg-slate-50 transition group';
+          row.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl ${meta.color} flex items-center justify-center text-sm shrink-0">
+                <i class="fa-solid ${meta.icon}"></i>
+              </div>
+              <div>
+                <div class="text-xs sm:text-sm font-bold text-slate-800 leading-snug">${item.title}</div>
+                <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span class="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">${bucketName}</span>
+                  <span class="font-medium text-slate-500">${item.category}</span>
+                  <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-semibold text-[9px] border border-indigo-100">정산: ${settlementTag}</span>
+                  <span>•</span>
+                  <span>${item.payMethod}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <div class="text-xs sm:text-sm font-extrabold ${isExpense ? 'text-slate-900' : 'text-emerald-600'}">
+                  ${isExpense ? '-' : '+'}${item.amount.toLocaleString()}원
+                </div>
+                <div class="text-[10px] text-slate-400">${item.type}</div>
+              </div>
+              <button onclick="deleteTransaction(${item.id})" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 p-1 transition text-xs" title="삭제">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
+          `;
+          cardBox.appendChild(row);
+        });
+
+        groupWrapper.appendChild(cardBox);
+        container.appendChild(groupWrapper);
+      });
+    }
+
+    function renderCategoryFilterButtons() {
+      const cats = ['ALL', '식비/카페', '교통/차량', '쇼핑/생활', '문화/여가', '주거/통신'];
+      cats.forEach(c => {
+        const btn = document.getElementById(`filter-btn-${c}`);
+        if (!btn) return;
+        if (activeCategory === c) {
+          btn.className = 'px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px]';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]';
+        }
+      });
+    }
+
+    // ================= EVENT HANDLERS & NAVIGATION =================
+    function onSelectDate(dateStr) {
+      if (selectedDateFilter === dateStr) {
+        selectedDateFilter = null;
+      } else {
+        selectedDateFilter = dateStr;
+      }
+      renderCalendar();
+      renderTimelineFeed();
+
+      if (window.innerWidth < 1024) {
+        document.getElementById('timelineFeedList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function clearDateFilter() {
+      selectedDateFilter = null;
+      renderCalendar();
+      renderTimelineFeed();
+    }
+
+    function setCategoryFilter(category) {
+      activeCategory = category;
+      renderCategoryFilterButtons();
+      renderTimelineFeed();
+    }
+
+    // 🌟 달력 월 이동 함수: 오직 달력 연/월(currentYear, currentMonth)만 이동하며, 정산월 필터는 전혀 건드리지 않음
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+      } else if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+      }
+      selectedDateFilter = null;
+
+      // 정산월 선택값을 강제로 변경하지 않고, 독립적으로 달력과 화면 갱신
+      refreshAll();
+    }
+
+    function toggleViewLayout() {
+      isWideLayout = !isWideLayout;
+      const gridEl = document.getElementById('mainLayoutGrid');
+      const textEl = document.getElementById('layoutText');
+      const iconEl = document.getElementById('layoutIcon');
+
+      if (isWideLayout) {
+        gridEl.className = "grid grid-cols-1 lg:grid-cols-12 gap-5 items-start";
+        textEl.textContent = "2열 와이드 뷰";
+        iconEl.className = "fa-solid fa-table-columns text-slate-500";
+      } else {
+        gridEl.className = "max-w-xl mx-auto space-y-5";
+        textEl.textContent = "1열 모바일 뷰";
+        iconEl.className = "fa-solid fa-mobile-screen text-slate-500";
+      }
+    }
+
+    // ================= SHEET CONFIG MODAL =================
+    function openSheetModal() {
+      document.getElementById('sheetUrlInput').value = GOOGLE_SHEET_CSV_URL;
+      document.getElementById('sheetModal').classList.remove('hidden');
+    }
+
+    function closeSheetModal() {
+      document.getElementById('sheetModal').classList.add('hidden');
+    }
+
+    function applySheetUrlAndFetch() {
+      const val = document.getElementById('sheetUrlInput').value.trim();
+      if (val) {
+        GOOGLE_SHEET_CSV_URL = val;
+        closeSheetModal();
+        fetchSheetData(true);
+      }
+    }
+
+    // ================= TRANSACTION MODAL & ACTIONS =================
+    function openAddModal() {
+      if (selectedDateFilter) {
+        document.getElementById('inputDate').value = selectedDateFilter;
+      } else {
+        document.getElementById('inputDate').value = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      }
+      document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+    }
+
+    function setModalType(type) {
+      modalTransType = type;
+      const btnExp = document.getElementById('btnModalExpense');
+      const btnInc = document.getElementById('btnModalIncome');
+
+      if (type === '지출') {
+        btnExp.className = 'py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 font-bold flex items-center justify-center gap-1.5 transition';
+        btnInc.className = 'py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-1.5 transition';
+      } else {
+        btnInc.className = 'py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-600 font-bold flex items-center justify-center gap-1.5 transition';
+        btnExp.className = 'py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-1.5 transition';
+      }
+    }
+
+    function handleNewTransaction(e) {
+      e.preventDefault();
+      const amount = parseInt(document.getElementById('inputAmount').value, 10);
+      const title = document.getElementById('inputTitle').value.trim();
+      const date = document.getElementById('inputDate').value;
+      const category = document.getElementById('inputCategory').value;
+      const payMethod = document.getElementById('inputPayMethod').value;
+
+      if (!amount || !title || !date) return;
+
+      const ymKey = date.slice(0, 7);
+
+      const newTx = {
+        id: Date.now(),
+        rawSettlement: ymKey,
+        settlementKey: ymKey,
+        date: date,
+        type: modalTransType,
+        category: category,
+        title: title,
+        amount: amount,
+        payMethod: payMethod
+      };
+
+      allTransactions.unshift(newTx);
+      populateSettlementMonthOptions();
+      applySettlementFilter();
+
+      closeAddModal();
+      document.getElementById('inputAmount').value = '';
+      document.getElementById('inputTitle').value = '';
+
+      showToast(`'${title}' 등록되었습니다.`);
+    }
+
+    function deleteTransaction(id) {
+      allTransactions = allTransactions.filter(t => t.id !== id);
+      applySettlementFilter();
+      showToast('내역이 삭제되었습니다.');
+    }
+
+    // ================= ANALYTICS DONUT CHART =================
+    function openAnalyticsModal() {
+      document.getElementById('analyticsModal').classList.remove('hidden');
+      renderAnalyticsDonut();
+    }
+
+    function closeAnalyticsModal() {
+      document.getElementById('analyticsModal').classList.add('hidden');
+    }
+
+    function renderAnalyticsDonut() {
+      const expenses = transactions.filter(t => t.type === '지출');
+      const catTotals = {};
+      expenses.forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+      });
+
+      const labels = Object.keys(catTotals);
+      const data = Object.values(catTotals);
+      const colors = labels.map(l => getCategoryMeta(l).dot);
+
+      const ctx = document.getElementById('modalDonutChart');
+      if (!ctx) return;
+
+      if (chartInstance) chartInstance.destroy();
+
+      if (data.length === 0) return;
+
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctxItem) {
+                  return ` ${ctxItem.label}: ₩${(ctxItem.raw || 0).toLocaleString()}`;
+                }
+              }
+            }
+          },
+          cutout: '70%'
+        }
+      });
+
+      const listEl = document.getElementById('analyticsBreakdownList');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      const totalAll = data.reduce((a, b) => a + b, 0);
+
+      labels.forEach((label, idx) => {
+        const val = data[idx];
+        const pct = totalAll > 0 ? Math.round((val / totalAll) * 100) : 0;
+        const color = colors[idx];
+
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-slate-50';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
+            <span class="font-medium text-slate-800">${label}</span>
+          </div>
+          <div class="text-right">
+            <span class="font-bold text-slate-900">${val.toLocaleString()}원</span>
+            <span class="text-slate-400 text-[10px] ml-1">(${pct}%)</span>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      const msgEl = document.getElementById('toastMsg');
+      msgEl.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-3');
+      }, 2500);
+    }
+
+    // ================= INITIALIZATION =================
+    window.onload = function() {
+      fetchSheetData();
+    };
+  </script>
+</body>
+</html>
