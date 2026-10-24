@@ -1427,18 +1427,23 @@
       // 🌟 구글 시트 원본 업데이트 요청
       if (GOOGLE_SCRIPT_API_URL) {
         try {
-          await fetch(GOOGLE_SCRIPT_API_URL, {
+          const res = await fetch(GOOGLE_SCRIPT_API_URL, {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
               title: item.title,
               category: targetCategory,
               date: item.date,
-              amount: item.amount
+              amount: item.amount,
+              row: item.id + 1
             })
           });
-          showToast(`구글 시트 원본 업데이트 완료!`);
+          const result = await res.json();
+          if (result.status === 'success') {
+            showToast(`구글 시트 ${result.row}행 업데이트 완료!`);
+          } else {
+            showToast('화면 반영 완료 (시트 업데이트 실패: ' + result.message + ')');
+          }
         } catch (err) {
           console.error('구글 시트 원본 업데이트 실패:', err);
           showToast('화면 반영 완료 (구글 시트 원본 연동 실패)');
