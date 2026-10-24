@@ -487,6 +487,14 @@
           <p class="text-[10px] text-slate-400 mt-1">시트 메뉴의 [파일] > [공유] > [웹에 게시]에서 형식: CSV로 게시된 링크입니다.</p>
         </div>
 
+        <!-- 🌟 구글 시트 원본 수정용 Apps Script Web App URL 설정 입력란 -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">구글 시트 원본 수정용 Apps Script API URL (선택)</label>
+          <input type="text" id="sheetScriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec"
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-[11px] text-slate-800 bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
+          <p class="text-[10px] text-indigo-600 font-medium mt-1">💡 카테고리 수정 시 구글 시트 원본 행도 실시간 업데이트하는 웹앱 주소입니다.</p>
+        </div>
+
         <div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-100 text-indigo-950 space-y-1">
           <div class="font-bold flex items-center gap-1.5">
             <i class="fa-solid fa-circle-info text-indigo-600"></i>
@@ -520,6 +528,7 @@
   <script>
     // ================= CONFIGURATION & GLOBAL STATE =================
     let GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRuvEUQgdDmlQBOvleIdzeGgqdpvV43OXuXeSNVwORH4IC246QkpskQhtwgp_BkKGXp3_-LlqfQbm5m/pub?gid=0&single=true&output=csv';
+    let GOOGLE_SCRIPT_API_URL = localStorage.getItem('MONEYLOG_SCRIPT_URL') || '';
 
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
@@ -539,32 +548,46 @@
     // 🌟 약 27개 이상의 다양한 카테고리(구분 컬럼 값) 매핑 및 아이콘/컬러 세트
     const categoryPalette = [
       { key: '식비', icon: 'fa-utensils', color: 'bg-rose-100 text-rose-600', dot: '#f43f5e', bar: 'bg-rose-500' },
+      { key: '음식', icon: 'fa-bowl-food', color: 'bg-rose-100 text-rose-600', dot: '#f43f5e', bar: 'bg-rose-500' },
+      { key: '커피디저트', icon: 'fa-mug-saucer', color: 'bg-amber-100 text-amber-700', dot: '#d97706', bar: 'bg-amber-500' },
+      { key: '식자재', icon: 'fa-cart-shopping', color: 'bg-emerald-100 text-emerald-700', dot: '#059669', bar: 'bg-emerald-500' },
+      { key: '유제품', icon: 'fa-cow', color: 'bg-blue-100 text-blue-600', dot: '#2563eb', bar: 'bg-blue-500' },
+      { key: '유하', icon: 'fa-baby', color: 'bg-pink-100 text-pink-600', dot: '#ec4899', bar: 'bg-pink-500' },
+      { key: '자동차', icon: 'fa-car', color: 'bg-slate-100 text-slate-700', dot: '#475569', bar: 'bg-slate-600' },
+      { key: '승차권', icon: 'fa-ticket', color: 'bg-sky-100 text-sky-600', dot: '#0284c7', bar: 'bg-sky-500' },
+      { key: '택시', icon: 'fa-taxi', color: 'bg-yellow-100 text-yellow-700', dot: '#eab308', bar: 'bg-yellow-500' },
+      { key: '화장품', icon: 'fa-wand-magic-sparkles', color: 'bg-fuchsia-100 text-fuchsia-600', dot: '#c026d3', bar: 'bg-fuchsia-500' },
+      { key: '편의점', icon: 'fa-store', color: 'bg-indigo-100 text-indigo-600', dot: '#4f46e5', bar: 'bg-indigo-500' },
+      { key: '쇼핑의류', icon: 'fa-shirt', color: 'bg-purple-100 text-purple-600', dot: '#9333ea', bar: 'bg-purple-500' },
+      { key: '의료건강', icon: 'fa-briefcase-medical', color: 'bg-teal-100 text-teal-700', dot: '#0d9488', bar: 'bg-teal-600' },
       { key: '카페', icon: 'fa-mug-saucer', color: 'bg-amber-100 text-amber-700', dot: '#d97706', bar: 'bg-amber-500' },
       { key: '간식', icon: 'fa-cookie-bite', color: 'bg-orange-100 text-orange-600', dot: '#f97316', bar: 'bg-orange-500' },
-      { key: '술', icon: 'fa-wine-glass', color: 'bg-red-100 text-red-600', dot: '#dc2626', bar: 'bg-red-500' },
-      { key: '유흥', icon: 'fa-champagne-glasses', color: 'bg-pink-100 text-pink-600', dot: '#db2777', bar: 'bg-pink-500' },
       { key: '교통', icon: 'fa-bus', color: 'bg-sky-100 text-sky-600', dot: '#0284c7', bar: 'bg-sky-500' },
-      { key: '차량', icon: 'fa-car', color: 'bg-blue-100 text-blue-600', dot: '#2563eb', bar: 'bg-blue-500' },
-      { key: '주유', icon: 'fa-gas-pump', color: 'bg-indigo-100 text-indigo-600', dot: '#4f46e5', bar: 'bg-indigo-500' },
       { key: '쇼핑', icon: 'fa-bag-shopping', color: 'bg-violet-100 text-violet-600', dot: '#7c3aed', bar: 'bg-violet-500' },
-      { key: '의류', icon: 'fa-shirt', color: 'bg-purple-100 text-purple-600', dot: '#9333ea', bar: 'bg-purple-500' },
-      { key: '뷰티', icon: 'fa-wand-magic-sparkles', color: 'bg-fuchsia-100 text-fuchsia-600', dot: '#c026d3', bar: 'bg-fuchsia-500' },
       { key: '생활', icon: 'fa-house-chimney', color: 'bg-emerald-100 text-emerald-600', dot: '#059669', bar: 'bg-emerald-500' },
-      { key: '문화', icon: 'fa-film', color: 'bg-teal-100 text-teal-600', dot: '#0d9488', bar: 'bg-teal-500' },
-      { key: '여가', icon: 'fa-gamepad', color: 'bg-cyan-100 text-cyan-600', dot: '#0891b2', bar: 'bg-cyan-500' },
-      { key: '도서', icon: 'fa-book', color: 'bg-amber-100 text-amber-800', dot: '#b45309', bar: 'bg-amber-600' },
-      { key: '구독', icon: 'fa-rotate', color: 'bg-rose-100 text-rose-700', dot: '#be123c', bar: 'bg-rose-600' },
-      { key: '주거', icon: 'fa-house', color: 'bg-blue-100 text-blue-700', dot: '#1d4ed8', bar: 'bg-blue-600' },
-      { key: '통신', icon: 'fa-wifi', color: 'bg-sky-100 text-sky-700', dot: '#0369a1', bar: 'bg-sky-600' },
-      { key: '의료', icon: 'fa-briefcase-medical', color: 'bg-emerald-100 text-emerald-700', dot: '#047857', bar: 'bg-emerald-600' },
-      { key: '건강', icon: 'fa-heart-pulse', color: 'bg-green-100 text-green-700', dot: '#15803d', bar: 'bg-green-600' },
-      { key: '교육', icon: 'fa-graduation-cap', color: 'bg-indigo-100 text-indigo-700', dot: '#3730a3', bar: 'bg-indigo-600' },
-      { key: '경조사', icon: 'fa-gift', color: 'bg-pink-100 text-pink-700', dot: '#be185d', bar: 'bg-pink-600' },
-      { key: '여행', icon: 'fa-plane', color: 'bg-cyan-100 text-cyan-800', dot: '#155e75', bar: 'bg-cyan-700' },
-      { key: '금융', icon: 'fa-piggy-bank', color: 'bg-violet-100 text-violet-700', dot: '#6d28d9', bar: 'bg-violet-600' },
-      { key: '세금', icon: 'fa-file-invoice-dollar', color: 'bg-slate-200 text-slate-700', dot: '#475569', bar: 'bg-slate-600' },
-      { key: '반려', icon: 'fa-paw', color: 'bg-amber-100 text-amber-900', dot: '#78350f', bar: 'bg-amber-700' },
       { key: '기타', icon: 'fa-tag', color: 'bg-slate-100 text-slate-600', dot: '#64748b', bar: 'bg-slate-500' }
+    ];
+
+    // 제공해주신 이미지 표 기반 지정 드롭다운 항목 리스트
+    const PRESET_CATEGORIES = [
+      '의료건강',
+      '커피디저트',
+      '식자재_고기',
+      '식자재_과일',
+      '식자재_기타',
+      '식자재_빵',
+      '식자재_수산',
+      '식자재_쌀',
+      '유제품',
+      '유하놀거리',
+      '유하하는것',
+      '자동차',
+      '승차권',
+      '택시',
+      '화장품',
+      '편의점',
+      '쇼핑의류',
+      '음식'
     ];
 
     function getCategoryMeta(catName) {
@@ -1322,6 +1345,15 @@
           const bucketName = classifyBudgetBucket(item);
           const settlementTag = formatSettlementDisplay(item.settlementKey || item.rawSettlement);
 
+          // 드롭다운 옵션 태그 생성 (이미지 표 항목들 + 현재 카테고리가 목록에 없으면 추가)
+          let categoryOptionsHtml = `<option value="${item.category}" selected>🏷️ ${item.category}</option>`;
+          PRESET_CATEGORIES.forEach(presetCat => {
+            if (presetCat !== item.category) {
+              categoryOptionsHtml += `<option value="${presetCat}">${presetCat}</option>`;
+            }
+          });
+          categoryOptionsHtml += `<option value="__CUSTOM__">✏️ 직접 입력...</option>`;
+
           const row = document.createElement('div');
           row.className = 'p-3 sm:p-3.5 flex items-center justify-between hover:bg-slate-50 transition group';
           row.innerHTML = `
@@ -1333,7 +1365,15 @@
                 <div class="text-xs sm:text-sm font-bold text-slate-800 leading-snug">${item.title}</div>
                 <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                   <span class="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">${bucketName}</span>
-                  <span class="font-medium text-slate-500">${item.category}</span>
+                  
+                  <!-- 🌟 카테고리(구분) 수정용 드롭다운 Box 및 사용자 직접 텍스트 입력 기능 -->
+                  <div class="relative inline-block">
+                    <select onchange="handleCategoryChange(${item.id}, this.value)" 
+                      class="bg-indigo-50/90 hover:bg-indigo-100 text-indigo-800 font-bold text-[10px] rounded-md px-1.5 py-0.5 border border-indigo-200/80 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition">
+                      ${categoryOptionsHtml}
+                    </select>
+                  </div>
+
                   <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-semibold text-[9px] border border-indigo-100">정산: ${settlementTag}</span>
                   <span>•</span>
                   <span>${item.payMethod}</span>
@@ -1359,6 +1399,51 @@
         groupWrapper.appendChild(cardBox);
         container.appendChild(groupWrapper);
       });
+    }
+
+    // 🌟 카테고리 수정 처리 및 구글 시트 원본 Sync 연동
+    async function handleCategoryChange(itemId, selectedValue) {
+      const item = allTransactions.find(t => t.id === itemId);
+      if (!item) return;
+
+      let targetCategory = selectedValue;
+
+      if (selectedValue === '__CUSTOM__') {
+        const customCat = prompt(`'${item.title}' 항목의 새 "구분"을 직접 입력하세요:`, item.category);
+        if (customCat && customCat.trim()) {
+          targetCategory = customCat.trim();
+        } else {
+          refreshAll();
+          return;
+        }
+      }
+
+      const oldCategory = item.category;
+      item.category = targetCategory;
+
+      refreshAll();
+      showToast(`'${item.title}'의 구분이 [${targetCategory}](으)로 변경되었습니다.`);
+
+      // 🌟 구글 시트 원본 업데이트 요청
+      if (GOOGLE_SCRIPT_API_URL) {
+        try {
+          await fetch(GOOGLE_SCRIPT_API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: item.title,
+              category: targetCategory,
+              date: item.date,
+              amount: item.amount
+            })
+          });
+          showToast(`구글 시트 원본 업데이트 완료!`);
+        } catch (err) {
+          console.error('구글 시트 원본 업데이트 실패:', err);
+          showToast('화면 반영 완료 (구글 시트 원본 연동 실패)');
+        }
+      }
     }
 
     // 🌟 2번 요구사항: "구분" 컬럼을 참조하여 약 27개의 카테고리별 필터 버튼 및 아이콘을 동적으로 생성
@@ -1463,6 +1548,7 @@
 
     function openSheetModal() {
       document.getElementById('sheetUrlInput').value = GOOGLE_SHEET_CSV_URL;
+      document.getElementById('sheetScriptUrlInput').value = GOOGLE_SCRIPT_API_URL || '';
       document.getElementById('sheetModal').classList.remove('hidden');
     }
 
@@ -1472,11 +1558,18 @@
 
     function applySheetUrlAndFetch() {
       const val = document.getElementById('sheetUrlInput').value.trim();
+      const scriptVal = document.getElementById('sheetScriptUrlInput').value.trim();
+      
       if (val) {
         GOOGLE_SHEET_CSV_URL = val;
-        closeSheetModal();
-        fetchSheetData(true);
       }
+      if (scriptVal) {
+        GOOGLE_SCRIPT_API_URL = scriptVal;
+        localStorage.setItem('MONEYLOG_SCRIPT_URL', scriptVal);
+      }
+
+      closeSheetModal();
+      fetchSheetData(true);
     }
 
     function openAddModal() {
