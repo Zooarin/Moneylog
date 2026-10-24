@@ -308,32 +308,9 @@
               </button>
             </div>
 
-            <!-- Category Filter Pills -->
+            <!-- 🌟 Category Filter Pills (Dynamically populated from "구분" column) -->
             <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar" id="categoryFilterBar">
-              <button onclick="setCategoryFilter('ALL')" id="filter-btn-ALL" 
-                class="px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px]">
-                전체
-              </button>
-              <button onclick="setCategoryFilter('식비/카페')" id="filter-btn-식비/카페" 
-                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
-                식비/카페
-              </button>
-              <button onclick="setCategoryFilter('교통/차량')" id="filter-btn-교통/차량" 
-                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
-                교통/차량
-              </button>
-              <button onclick="setCategoryFilter('쇼핑/생활')" id="filter-btn-쇼핑/생활" 
-                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
-                쇼핑/생활
-              </button>
-              <button onclick="setCategoryFilter('문화/여가')" id="filter-btn-문화/여가" 
-                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
-                문화/여가
-              </button>
-              <button onclick="setCategoryFilter('주거/통신')" id="filter-btn-주거/통신" 
-                class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]">
-                주거/통신
-              </button>
+              <!-- Dynamically populated -->
             </div>
           </div>
 
@@ -385,7 +362,7 @@
       <form onsubmit="handleNewTransaction(event)" class="space-y-3.5 text-xs">
         <!-- Expense / Income Selection -->
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">구분</label>
+          <label class="block font-semibold text-slate-700 mb-1">유형</label>
           <div class="grid grid-cols-2 gap-2">
             <button type="button" onclick="setModalType('지출')" id="btnModalExpense" 
               class="py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 font-bold flex items-center justify-center gap-1.5 transition">
@@ -424,7 +401,7 @@
         <!-- Category & Pay Method -->
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">카테고리</label>
+            <label class="block font-semibold text-slate-700 mb-1">구분 (카테고리)</label>
             <select id="inputCategory" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-xs text-slate-800">
               <option value="식비/카페">식비/카페</option>
               <option value="교통/차량">교통/차량</option>
@@ -457,27 +434,27 @@
     </div>
   </div>
 
-  <!-- ================= MODAL: ANALYTICS (2번 차트 기능 결합) ================= -->
+  <!-- ================= MODAL: ANALYTICS (1번 가로 바 차트 결합) ================= -->
   <div id="analyticsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
       
       <div class="flex justify-between items-center mb-4">
         <div>
-          <h3 class="text-base font-bold text-slate-900">📊 소비 통계 분석</h3>
-          <p class="text-[11px] text-slate-400">카테고리별 비중 및 지출 흐름</p>
+          <h3 class="text-base font-bold text-slate-900">📊 이번달 "구분"별 지출 통계</h3>
+          <p class="text-[11px] text-slate-400">구분 컬럼 카테고리별 지출 금액 가로 바 차트</p>
         </div>
         <button onclick="closeAnalyticsModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <!-- Donut Chart Canvas Container -->
-      <div class="h-56 relative mb-4 flex items-center justify-center">
+      <!-- 🌟 Horizontal Bar Chart Canvas Container -->
+      <div class="h-72 relative mb-4 flex items-center justify-center">
         <canvas id="modalDonutChart"></canvas>
       </div>
 
       <!-- Category Breakdown List -->
-      <div class="space-y-2 text-xs" id="analyticsBreakdownList">
+      <div class="space-y-2 text-xs max-h-52 overflow-y-auto pr-1" id="analyticsBreakdownList">
         <!-- Dynamically populated -->
       </div>
 
@@ -516,8 +493,7 @@
             <span>자동 컬럼 매핑 안내</span>
           </div>
           <p class="text-[11px] text-indigo-800 leading-relaxed">
-            시트의 <code class="font-mono bg-white px-1 rounded text-indigo-900">정산월</code> 컬럼을 분석하여 선택 박스에 월 목록을 표시하고, 
-            <code class="font-mono bg-white px-1 rounded text-indigo-900">title</code>(내역/사용처), <code class="font-mono bg-white px-1 rounded text-indigo-900">금액</code>, <code class="font-mono bg-white px-1 rounded text-indigo-900">카테고리</code>를 캘린더 및 피드에 동기화합니다.
+            시트의 <code class="font-mono bg-white px-1 rounded text-indigo-900">정산월</code>, <code class="font-mono bg-white px-1 rounded text-indigo-900">구분</code>(카테고리), <code class="font-mono bg-white px-1 rounded text-indigo-900">title</code>(사용처), <code class="font-mono bg-white px-1 rounded text-indigo-900">금액</code> 컬럼을 자동으로 인식합니다.
           </p>
         </div>
 
@@ -545,37 +521,50 @@
     // ================= CONFIGURATION & GLOBAL STATE =================
     let GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRuvEUQgdDmlQBOvleIdzeGgqdpvV43OXuXeSNVwORH4IC246QkpskQhtwgp_BkKGXp3_-LlqfQbm5m/pub?gid=0&single=true&output=csv';
 
-    // 달력 표시 연/월 (실제 거래 일자 Date 기준 - 시트 로드시 최신 데이터로 자동 갱신됨)
     let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth() + 1; // 1-12
-    let isFirstLoad = true; // 최초 접속 시 최신 연월 자동 지정을 위한 플래그
+    let currentMonth = new Date().getMonth() + 1;
+    let isFirstLoad = true;
 
-    let selectedDateFilter = null; // 'YYYY-MM-DD' or null
+    let selectedDateFilter = null;
     let activeCategory = 'ALL';
     let isWideLayout = true;
     let modalTransType = '지출';
     let chartInstance = null;
 
-    // 전체 로드된 트랜잭션 데이터 및 정산월 목록
     let allTransactions = [];
-    let transactions = []; // 정산월 필터가 적용된 거래 내역
-    let availableSettlementMonths = []; // 예: ['2026-10', '2026-09', ...]
-    let selectedSettlementMonth = null; // 초기 로드시 최신 정산월로 자동 설정
+    let transactions = [];
+    let availableSettlementMonths = [];
+    let selectedSettlementMonth = null;
 
-    // 카테고리별 테마 및 아이콘 매핑
+    // 🌟 약 27개 이상의 다양한 카테고리(구분 컬럼 값) 매핑 및 아이콘/컬러 세트
     const categoryPalette = [
       { key: '식비', icon: 'fa-utensils', color: 'bg-rose-100 text-rose-600', dot: '#f43f5e', bar: 'bg-rose-500' },
       { key: '카페', icon: 'fa-mug-saucer', color: 'bg-amber-100 text-amber-700', dot: '#d97706', bar: 'bg-amber-500' },
+      { key: '간식', icon: 'fa-cookie-bite', color: 'bg-orange-100 text-orange-600', dot: '#f97316', bar: 'bg-orange-500' },
+      { key: '술', icon: 'fa-wine-glass', color: 'bg-red-100 text-red-600', dot: '#dc2626', bar: 'bg-red-500' },
+      { key: '유흥', icon: 'fa-champagne-glasses', color: 'bg-pink-100 text-pink-600', dot: '#db2777', bar: 'bg-pink-500' },
       { key: '교통', icon: 'fa-bus', color: 'bg-sky-100 text-sky-600', dot: '#0284c7', bar: 'bg-sky-500' },
-      { key: '쇼핑', icon: 'fa-bag-shopping', color: 'bg-indigo-100 text-indigo-600', dot: '#6366f1', bar: 'bg-indigo-500' },
-      { key: '생활', icon: 'fa-house-chimney', color: 'bg-violet-100 text-violet-600', dot: '#8b5cf6', bar: 'bg-violet-500' },
-      { key: '문화', icon: 'fa-film', color: 'bg-purple-100 text-purple-600', dot: '#a855f7', bar: 'bg-purple-500' },
-      { key: '여가', icon: 'fa-gamepad', color: 'bg-pink-100 text-pink-600', dot: '#ec4899', bar: 'bg-pink-500' },
-      { key: '주거', icon: 'fa-house', color: 'bg-blue-100 text-blue-600', dot: '#3b82f6', bar: 'bg-blue-500' },
-      { key: '통신', icon: 'fa-wifi', color: 'bg-cyan-100 text-cyan-700', dot: '#0891b2', bar: 'bg-cyan-500' },
-      { key: '의료', icon: 'fa-briefcase-medical', color: 'bg-emerald-100 text-emerald-600', dot: '#10b981', bar: 'bg-emerald-500' },
-      { key: '교육', icon: 'fa-graduation-cap', color: 'bg-teal-100 text-teal-700', dot: '#0d9488', bar: 'bg-teal-500' },
-      { key: '기타', icon: 'fa-wallet', color: 'bg-slate-100 text-slate-600', dot: '#64748b', bar: 'bg-slate-500' }
+      { key: '차량', icon: 'fa-car', color: 'bg-blue-100 text-blue-600', dot: '#2563eb', bar: 'bg-blue-500' },
+      { key: '주유', icon: 'fa-gas-pump', color: 'bg-indigo-100 text-indigo-600', dot: '#4f46e5', bar: 'bg-indigo-500' },
+      { key: '쇼핑', icon: 'fa-bag-shopping', color: 'bg-violet-100 text-violet-600', dot: '#7c3aed', bar: 'bg-violet-500' },
+      { key: '의류', icon: 'fa-shirt', color: 'bg-purple-100 text-purple-600', dot: '#9333ea', bar: 'bg-purple-500' },
+      { key: '뷰티', icon: 'fa-wand-magic-sparkles', color: 'bg-fuchsia-100 text-fuchsia-600', dot: '#c026d3', bar: 'bg-fuchsia-500' },
+      { key: '생활', icon: 'fa-house-chimney', color: 'bg-emerald-100 text-emerald-600', dot: '#059669', bar: 'bg-emerald-500' },
+      { key: '문화', icon: 'fa-film', color: 'bg-teal-100 text-teal-600', dot: '#0d9488', bar: 'bg-teal-500' },
+      { key: '여가', icon: 'fa-gamepad', color: 'bg-cyan-100 text-cyan-600', dot: '#0891b2', bar: 'bg-cyan-500' },
+      { key: '도서', icon: 'fa-book', color: 'bg-amber-100 text-amber-800', dot: '#b45309', bar: 'bg-amber-600' },
+      { key: '구독', icon: 'fa-rotate', color: 'bg-rose-100 text-rose-700', dot: '#be123c', bar: 'bg-rose-600' },
+      { key: '주거', icon: 'fa-house', color: 'bg-blue-100 text-blue-700', dot: '#1d4ed8', bar: 'bg-blue-600' },
+      { key: '통신', icon: 'fa-wifi', color: 'bg-sky-100 text-sky-700', dot: '#0369a1', bar: 'bg-sky-600' },
+      { key: '의료', icon: 'fa-briefcase-medical', color: 'bg-emerald-100 text-emerald-700', dot: '#047857', bar: 'bg-emerald-600' },
+      { key: '건강', icon: 'fa-heart-pulse', color: 'bg-green-100 text-green-700', dot: '#15803d', bar: 'bg-green-600' },
+      { key: '교육', icon: 'fa-graduation-cap', color: 'bg-indigo-100 text-indigo-700', dot: '#3730a3', bar: 'bg-indigo-600' },
+      { key: '경조사', icon: 'fa-gift', color: 'bg-pink-100 text-pink-700', dot: '#be185d', bar: 'bg-pink-600' },
+      { key: '여행', icon: 'fa-plane', color: 'bg-cyan-100 text-cyan-800', dot: '#155e75', bar: 'bg-cyan-700' },
+      { key: '금융', icon: 'fa-piggy-bank', color: 'bg-violet-100 text-violet-700', dot: '#6d28d9', bar: 'bg-violet-600' },
+      { key: '세금', icon: 'fa-file-invoice-dollar', color: 'bg-slate-200 text-slate-700', dot: '#475569', bar: 'bg-slate-600' },
+      { key: '반려', icon: 'fa-paw', color: 'bg-amber-100 text-amber-900', dot: '#78350f', bar: 'bg-amber-700' },
+      { key: '기타', icon: 'fa-tag', color: 'bg-slate-100 text-slate-600', dot: '#64748b', bar: 'bg-slate-500' }
     ];
 
     function getCategoryMeta(catName) {
@@ -593,7 +582,7 @@
     // ================= RFC-4180 COMPLIANT CSV PARSER =================
     function parseCSV(text) {
       if (text.charCodeAt(0) === 0xFEFF) {
-        text = text.slice(1); // UTF-8 BOM 제거
+        text = text.slice(1);
       }
       const lines = [];
       let row = [];
@@ -637,7 +626,6 @@
       return lines;
     }
 
-    // ================= DATE & NUMBER PARSING HELPERS =================
     function parseYearMonth(val) {
       if (!val) return null;
       val = String(val).trim();
@@ -754,7 +742,6 @@
       if (parsedData.length > 0) {
         allTransactions = parsedData;
 
-        // 🌟 최초 로드 시 시트 내 가장 최신 거래 날짜와 최신 정산월로 자동 세팅
         if (isFirstLoad) {
           setupLatestMonthAndSettlement();
           isFirstLoad = false;
@@ -778,9 +765,7 @@
       if (syncSpinner) syncSpinner.classList.remove('fa-spin');
     }
 
-    // 🌟 최신 달력 연월 및 최신 정산월 자동 감지 & 초기화 헬퍼
     function setupLatestMonthAndSettlement() {
-      // 1. 거래 내역 중 가장 최신 일자를 찾아 달력 연/월(currentYear, currentMonth)로 세팅
       const validDates = allTransactions
         .map(t => t.date)
         .filter(Boolean)
@@ -795,7 +780,6 @@
         }
       }
 
-      // 2. 존재하는 정산월 중 가장 최신 정산월을 찾아 기본 필터값으로 지정
       const monthMap = new Map();
       allTransactions.forEach(t => {
         const key = t.settlementKey;
@@ -805,7 +789,7 @@
       });
       const sortedMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
       if (sortedMonths.length > 0) {
-        selectedSettlementMonth = sortedMonths[0]; // 가장 최신 정산월
+        selectedSettlementMonth = sortedMonths[0];
       } else {
         selectedSettlementMonth = 'ALL';
       }
@@ -828,10 +812,10 @@
 
       const settlementCol = findColIdx(['정산월', '정산', '기준월', '해당월', '월', 'Month']);
       const dateCol = findColIdx(['날짜', '일자', '거래일시', '거래일', '일시', 'Date', 'Day']);
-      const typeCol = findColIdx(['구분', '유형', '입출', '지출/수입', '수입/지출', 'Type']);
-      const categoryCol = findColIdx(['카테고리', '분류', '대분류', '항목', 'Category']);
+      // 🌟 "구분" 컬럼을 카테고리로 매핑
+      const categoryCol = findColIdx(['구분', '카테고리', '분류', '대분류', '항목', 'Category']);
+      const typeCol = findColIdx(['유형', '입출', '지출/수입', '수입/지출', 'Type']);
       
-      // 🌟 지출내역은 'title' 컬럼을 최우선으로 매핑
       let titleCol = headers.findIndex(h => h.toLowerCase() === 'title');
       if (titleCol === -1) {
         titleCol = findColIdx(['title', '내역', '사용처', '내용', '적요', '가맹점', '거래처', '상호', '메모', 'Item', 'Description']);
@@ -900,7 +884,6 @@
       return items;
     }
 
-    // ================= SETTLEMENT MONTH POPULATION & FILTERING =================
     function populateSettlementMonthOptions() {
       const selectEl = document.getElementById('settlementMonthSelect');
       selectEl.innerHTML = '';
@@ -915,7 +898,6 @@
 
       availableSettlementMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
 
-      // 1. 정산월 목록 옵션 추가 (최신순)
       availableSettlementMonths.forEach(mKey => {
         const opt = document.createElement('option');
         opt.value = mKey;
@@ -923,13 +905,11 @@
         selectEl.appendChild(opt);
       });
 
-      // 2. '전체 정산월' 옵션도 함께 제공
       const allOpt = document.createElement('option');
       allOpt.value = 'ALL';
       allOpt.textContent = '전체 정산월 (모두 보기)';
       selectEl.appendChild(allOpt);
 
-      // 현재 선택값이 유효하지 않은 경우 최신 정산월을 기본 선택
       if (!selectedSettlementMonth || (!availableSettlementMonths.includes(selectedSettlementMonth) && selectedSettlementMonth !== 'ALL')) {
         selectedSettlementMonth = availableSettlementMonths.length > 0 ? availableSettlementMonths[0] : 'ALL';
       }
@@ -938,7 +918,6 @@
 
     function onSettlementMonthChange(val) {
       selectedSettlementMonth = val;
-      // 🌟 정산월을 변경하더라도 달력의 currentYear/currentMonth는 절대로 강제 변경하지 않음
       applySettlementFilter();
     }
 
@@ -953,9 +932,7 @@
       refreshAll();
     }
 
-    // ================= HELPER: 데이터가 있는 날 사이의 무지출 일자 계산 =================
     function getZeroSpendDaysInfo() {
-      // 현재 달력에 표시되는 해당 월(currentYear, currentMonth)에 해당하는 트랜잭션 우선 확인
       const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(currentMonthPrefix));
 
@@ -996,7 +973,6 @@
       };
     }
 
-    // ================= 결제수단별 지출 분류 헬퍼 =================
     function classifyBudgetBucket(item) {
       const combined = `${item.payMethod} ${item.category} ${item.title}`.toLowerCase();
       if (combined.includes('씨티') || combined.includes('citi') || combined.includes('city')) {
@@ -1008,20 +984,17 @@
       return '현금';
     }
 
-    // ================= UI REFRESH & STATS =================
     function refreshAll() {
       renderHeaderStats();
       renderCalendar();
       renderBudgetBuckets();
-      renderTimelineFeed();
       renderCategoryFilterButtons();
+      renderTimelineFeed();
     }
 
     function renderHeaderStats() {
-      // 🌟 달력 월 라벨은 순수하게 달력의 현재 연월(currentYear, currentMonth)을 표시
       document.getElementById('currentMonthLabel').textContent = `${currentYear}년 ${currentMonth}월`;
 
-      // 통계 계산: 정산월 필터가 활성화된 경우 해당 정산월 전체, ALL인 경우 현재 달력 월 기준
       let statTransactions = transactions;
       if (selectedSettlementMonth === 'ALL') {
         const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -1055,7 +1028,6 @@
       document.getElementById('zeroSpendCountLabel').textContent = `${zeroSpendDates.size}일 달성`;
     }
 
-    // ================= 3번 CALENDAR RENDER =================
     function renderCalendar() {
       const grid = document.getElementById('calendarGrid');
       grid.innerHTML = '';
@@ -1076,7 +1048,6 @@
 
       const { zeroSpendDates } = getZeroSpendDaysInfo();
 
-      // 이전 달 패딩 셀
       for (let i = 0; i < firstDayIndex; i++) {
         const prevDayNum = prevMonthDays - firstDayIndex + i + 1;
         const padCell = document.createElement('div');
@@ -1085,14 +1056,12 @@
         grid.appendChild(padCell);
       }
 
-      // 이번 달 날짜 셀 (실제 거래일자 date 기준으로 매핑)
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
         const dayOfWeek = (firstDayIndex + d - 1) % 7;
         const isToday = (new Date().toISOString().slice(0, 10) === dateStr);
         const isSelected = (selectedDateFilter === dateStr);
 
-        // 현재 날짜(date)에 해당하는 거래들
         const dayTxs = transactions.filter(t => t.date === dateStr);
         const dayExpense = dayTxs.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
 
@@ -1138,7 +1107,6 @@
       }
     }
 
-    // ================= ENVELOPE BUDGET =================
     function renderBudgetBuckets() {
       const container = document.getElementById('bucketBudgetContainer');
       if (!container) return;
@@ -1257,7 +1225,6 @@
       });
     }
 
-    // ================= 1번 TIMELINE FEED RENDER =================
     function renderTimelineFeed() {
       const container = document.getElementById('timelineFeedList');
       container.innerHTML = '';
@@ -1270,7 +1237,6 @@
 
       let filtered = [...transactions];
 
-      // 날짜 클릭 필터가 있는 경우
       if (selectedDateFilter) {
         filtered = filtered.filter(t => t.date === selectedDateFilter);
         focusBox.classList.remove('hidden');
@@ -1284,7 +1250,6 @@
         mainTitle.textContent = `${dateFormatted} 거래 내역`;
         subTitle.textContent = '선택한 날짜 내역';
       } else {
-        // 날짜 선택이 없을 때는 현재 달력 월의 내역을 우선 보여주거나 정산월 필터 내역 표시
         focusBox.classList.add('hidden');
         badge.classList.add('hidden');
 
@@ -1294,7 +1259,6 @@
         } else {
           mainTitle.textContent = `${currentYear}년 ${currentMonth}월 달력 기준 거래 내역`;
           subTitle.textContent = '타임라인 피드';
-          // ALL일 때는 현재 보고 있는 달력 월의 거래 내역을 기본 타임라인으로 보여줌
           const curMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
           filtered = filtered.filter(t => t.date && t.date.startsWith(curMonthPrefix));
         }
@@ -1397,20 +1361,50 @@
       });
     }
 
+    // 🌟 2번 요구사항: "구분" 컬럼을 참조하여 약 27개의 카테고리별 필터 버튼 및 아이콘을 동적으로 생성
     function renderCategoryFilterButtons() {
-      const cats = ['ALL', '식비/카페', '교통/차량', '쇼핑/생활', '문화/여가', '주거/통신'];
-      cats.forEach(c => {
-        const btn = document.getElementById(`filter-btn-${c}`);
-        if (!btn) return;
-        if (activeCategory === c) {
-          btn.className = 'px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px]';
-        } else {
-          btn.className = 'px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px]';
-        }
+      const bar = document.getElementById('categoryFilterBar');
+      if (!bar) return;
+
+      // 🌟 전체 데이터(allTransactions) 대신 현재 정산월에 필터링된 데이터(transactions) 기준 카테고리 추출
+      const categorySet = new Set();
+      transactions.forEach(t => {
+        if (t.category) categorySet.add(t.category);
+      });
+      const categories = Array.from(categorySet).sort();
+
+      // 현재 선택된 activeCategory가 변경된 목록에 없다면 'ALL'로 리셋
+      if (activeCategory !== 'ALL' && !categorySet.has(activeCategory)) {
+        activeCategory = 'ALL';
+      }
+
+      bar.innerHTML = '';
+
+      // '전체' 버튼
+      const allBtn = document.createElement('button');
+      allBtn.onclick = () => setCategoryFilter('ALL');
+      allBtn.id = 'filter-btn-ALL';
+      allBtn.className = activeCategory === 'ALL'
+        ? 'px-2.5 py-1.5 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px] flex items-center gap-1.5 shadow-xs'
+        : 'px-2.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px] flex items-center gap-1.5';
+      allBtn.innerHTML = `<i class="fa-solid fa-list-ul"></i><span>전체</span>`;
+      bar.appendChild(allBtn);
+
+      // 현재 선택된 정산월 데이터에 존재하는 고유 카테고리별 버튼만 생성
+      categories.forEach(cat => {
+        const meta = getCategoryMeta(cat);
+        const isActive = activeCategory === cat;
+        const btn = document.createElement('button');
+        btn.onclick = () => setCategoryFilter(cat);
+        btn.id = `filter-btn-${CSS.escape(cat)}`;
+        btn.className = isActive
+          ? 'px-2.5 py-1.5 rounded-full bg-slate-900 text-white font-medium shrink-0 transition text-[11px] flex items-center gap-1.5 shadow-xs'
+          : 'px-2.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0 transition text-[11px] flex items-center gap-1.5';
+        btn.innerHTML = `<i class="fa-solid ${meta.icon}"></i><span>${cat}</span>`;
+        bar.appendChild(btn);
       });
     }
 
-    // ================= EVENT HANDLERS & NAVIGATION =================
     function onSelectDate(dateStr) {
       if (selectedDateFilter === dateStr) {
         selectedDateFilter = null;
@@ -1437,7 +1431,6 @@
       renderTimelineFeed();
     }
 
-    // 🌟 달력 월 이동 함수: 오직 달력 연/월(currentYear, currentMonth)만 이동하며, 정산월 필터는 전혀 건드리지 않음
     function changeMonth(delta) {
       currentMonth += delta;
       if (currentMonth > 12) {
@@ -1448,8 +1441,6 @@
         currentYear--;
       }
       selectedDateFilter = null;
-
-      // 정산월 선택값을 강제로 변경하지 않고, 독립적으로 달력과 화면 갱신
       refreshAll();
     }
 
@@ -1470,7 +1461,6 @@
       }
     }
 
-    // ================= SHEET CONFIG MODAL =================
     function openSheetModal() {
       document.getElementById('sheetUrlInput').value = GOOGLE_SHEET_CSV_URL;
       document.getElementById('sheetModal').classList.remove('hidden');
@@ -1489,7 +1479,6 @@
       }
     }
 
-    // ================= TRANSACTION MODAL & ACTIONS =================
     function openAddModal() {
       if (selectedDateFilter) {
         document.getElementById('inputDate').value = selectedDateFilter;
@@ -1558,25 +1547,34 @@
       showToast('내역이 삭제되었습니다.');
     }
 
-    // ================= ANALYTICS DONUT CHART =================
+    // ================= 1번 요구사항: 이번달 총 지출을 "구분" 컬럼으로 카테고리화한 가로 바 차트 (Horizontal Bar Chart) =================
     function openAnalyticsModal() {
       document.getElementById('analyticsModal').classList.remove('hidden');
-      renderAnalyticsDonut();
+      renderAnalyticsChart();
     }
 
     function closeAnalyticsModal() {
       document.getElementById('analyticsModal').classList.add('hidden');
     }
 
-    function renderAnalyticsDonut() {
-      const expenses = transactions.filter(t => t.type === '지출');
+    function renderAnalyticsChart() {
+      let statTransactions = transactions;
+      if (selectedSettlementMonth === 'ALL') {
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        statTransactions = transactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+      }
+
+      const expenses = statTransactions.filter(t => t.type === '지출');
       const catTotals = {};
       expenses.forEach(t => {
-        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+        const cat = t.category || '기타';
+        catTotals[cat] = (catTotals[cat] || 0) + t.amount;
       });
 
-      const labels = Object.keys(catTotals);
-      const data = Object.values(catTotals);
+      // 내림차순 정렬
+      const sortedCategories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+      const labels = sortedCategories;
+      const data = sortedCategories.map(cat => catTotals[cat]);
       const colors = labels.map(l => getCategoryMeta(l).dot);
 
       const ctx = document.getElementById('modalDonutChart');
@@ -1584,20 +1582,27 @@
 
       if (chartInstance) chartInstance.destroy();
 
-      if (data.length === 0) return;
+      if (data.length === 0) {
+        chartInstance = null;
+        const listEl = document.getElementById('analyticsBreakdownList');
+        if (listEl) listEl.innerHTML = '<div class="text-center py-6 text-xs text-slate-400">이번 달 지출 내역이 없습니다.</div>';
+        return;
+      }
 
       chartInstance = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
           labels: labels,
           datasets: [{
+            label: '지출 금액',
             data: data,
             backgroundColor: colors,
-            borderWidth: 2,
-            borderColor: '#ffffff'
+            borderWidth: 0,
+            borderRadius: 6
           }]
         },
         options: {
+          indexAxis: 'y', // 🌟 가로 바 차트 (Horizontal Bar Chart)
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
@@ -1605,12 +1610,32 @@
             tooltip: {
               callbacks: {
                 label: function(ctxItem) {
-                  return ` ${ctxItem.label}: ₩${(ctxItem.raw || 0).toLocaleString()}`;
+                  return ` ₩${(ctxItem.raw || 0).toLocaleString()}`;
                 }
               }
             }
           },
-          cutout: '70%'
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.04)'
+              },
+              ticks: {
+                font: { size: 10 },
+                callback: function(value) {
+                  if (value >= 10000) {
+                    return (value / 10000).toLocaleString() + '만';
+                  }
+                  return value.toLocaleString();
+                }
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 11, weight: 'bold' } }
+            }
+          }
         }
       });
 
@@ -1619,21 +1644,24 @@
       listEl.innerHTML = '';
       const totalAll = data.reduce((a, b) => a + b, 0);
 
-      labels.forEach((label, idx) => {
+      sortedCategories.forEach((label, idx) => {
         const val = data[idx];
         const pct = totalAll > 0 ? Math.round((val / totalAll) * 100) : 0;
         const color = colors[idx];
+        const meta = getCategoryMeta(label);
 
         const row = document.createElement('div');
-        row.className = 'flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-slate-50';
+        row.className = 'flex justify-between items-center py-2 px-3 rounded-xl bg-slate-50 border border-slate-100';
         row.innerHTML = `
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
-            <span class="font-medium text-slate-800">${label}</span>
+            <span class="w-6 h-6 rounded-lg ${meta.color} flex items-center justify-center text-xs shrink-0">
+              <i class="fa-solid ${meta.icon}"></i>
+            </span>
+            <span class="font-bold text-slate-800 text-xs">${label}</span>
           </div>
           <div class="text-right">
-            <span class="font-bold text-slate-900">${val.toLocaleString()}원</span>
-            <span class="text-slate-400 text-[10px] ml-1">(${pct}%)</span>
+            <span class="font-extrabold text-slate-900 text-xs">${val.toLocaleString()}원</span>
+            <span class="text-slate-400 text-[10px] ml-1.5 font-medium">(${pct}%)</span>
           </div>
         `;
         listEl.appendChild(row);
@@ -1653,7 +1681,6 @@
       }, 2500);
     }
 
-    // ================= INITIALIZATION =================
     window.onload = function() {
       fetchSheetData();
     };
