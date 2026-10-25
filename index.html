@@ -528,8 +528,8 @@
   <script>
     // ================= CONFIGURATION & GLOBAL STATE =================
     let GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRuvEUQgdDmlQBOvleIdzeGgqdpvV43OXuXeSNVwORH4IC246QkpskQhtwgp_BkKGXp3_-LlqfQbm5m/pub?gid=0&single=true&output=csv';
-    // 🌟 code.gs 배포 URL 기본값 (서버가 ScriptApp.getService().getUrl() 값을 템플릿으로 주입)
-    const DEFAULT_SCRIPT_API_URL = '<?!= scriptUrl ?>';
+    // 🌟 Apps Script 웹앱 배포 URL 기본값 (고정값)
+    const DEFAULT_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxI2fEUhZcaiDD7f2zqKRcFNqUIAp0Cuaa4uVXHZVlV-U3JedYz_aMyvKIGsOsiGO60/exec';
 
     // 우선순위: ① 설정창에서 직접 저장한 URL(localStorage) → ② code.gs 배포 URL 기본값
     function getDefaultScriptApiUrl() {
